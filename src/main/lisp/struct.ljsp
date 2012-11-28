@@ -1,0 +1,46 @@
+;;;; struct.ljsp
+;; Structs are based on alists at the moment, gives way for nice serialization at
+;; least, but lookup time is linear.
+
+(require 'stuff)
+
+(defmacro defstruct (a)
+  (let ((name (cadr a))
+        (slots (mapcar (lambda (x) (if (atom? x) (cons x nil) x))
+                       (cddr a)))
+        (args-sym (gensym))
+        (arg-sym  (gensym))
+        (fail-sym (gensym))
+        (obj-sym  (gensym)))
+    (subst-symbols
+     '(progn <constructor> <predicate> (progn . <getters-setters>) '<name>)
+     '<name> name
+     '<constructor> (subst-symbols '(defun <constructor-name> <args-sym> (let (<obj-sym>) (progn . <body>) (list* 'struct '<name> <obj-sym>)))
+                                   '<constructor-name> (symbol-concat 'make- name)
+                                   '<name> name
+                                   '<args-sym> args-sym
+                                   '<obj-sym> obj-sym
+                                   '<body> (mapcar (lambda (x)
+                                                     (subst-symbols '(let ((<arg-sym> (getf <args-sym> '<slot-name> <fail-sym>)))
+                                                                       (if (eq? <arg-sym> <fail-sym>)
+                                                                           (setq <obj-sym> (acons '<slot-name> <slot-initform> <obj-sym>))
+                                                                           (setq <obj-sym> (acons '<slot-name> <arg-sym> <obj-sym>))))
+                                                                    '<slot-name>     (first x)
+                                                                    '<slot-initform> (second x)
+                                                                    '<arg-sym>       arg-sym
+                                                                    '<args-sym>      args-sym
+                                                                    '<fail-sym>      fail-sym
+                                                                    '<obj-sym>       obj-sym))
+                                                   slots))
+     '<predicate> (subst-symbols '(defun <predicate-name> (obj) (and (eq? (first obj) 'struct) (eq? (second obj) '<name>)))
+                                 '<predicate-name> (symbol-concat name '?)
+                                 '<name>           name)
+     '<getters-setters> (mapcar (lambda (x)
+                                  (subst-symbols '(progn (defun <getter-name> (obj)   (cdr    (assq '<slot-name> (cddr obj))))
+                                                         (defun <setter-name> (obj q) (rplacd (assq '<slot-name> (cddr obj)) q) q))
+                                                 '<getter-name> (symbol-concat name '- (first x))
+                                                 '<setter-name> (symbol-concat name '-set- (first x))
+                                                 '<slot-name>   (first x)))
+                                slots))))
+    
+(provide 'struct)

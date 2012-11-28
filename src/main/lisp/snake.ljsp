@@ -1,0 +1,132 @@
+;;;; SNAKE
+;; The holes are intentional...
+;; Notable is how I use timers to ensure that everything runs within the Swing event-thread (since
+;; dynamic scoping with shallow binding is fundamentally threading incompatible anything else will
+;; make things blow up... gah! (Also swing wants everything to run inside the event-thread anyways))
+;; vars: +snake-width+
+;;       +snake-height+
+;;       +snake-delay+
+;;       snake-field
+;;       snake-frame
+;;       snake-pos
+;;       snake-direction
+;;       snake-timer
+;;       snake-ring
+;;       snake-score
+
+(require 'java)
+
+(setq +snake-width+  60
+      +snake-height+ 40
+      +snake-delay+  100)
+
+(defun snake-get-row (x) (aref snake-field x))
+(defun snake-get (pos) (aref (aref snake-field (cdr pos)) (car pos)))
+(defun snake-set (pos ch) (aset (aref snake-field (cdr pos)) (car pos) ch))
+
+(defun snake-make-field (w h)
+  (let ((field (make-array h)))
+    (dotimes (i h)
+      (aset field i (make-string w #\.)))
+    (dotimes (x w)
+      (aset (aref field 0)      x #\#)
+      (aset (aref field (1- h)) x #\#))
+    (dotimes (y h)
+      (aset (aref field y) 0      #\#)
+      (aset (aref field y) (1- w) #\#))
+    field))
+
+(defun snake ()
+  (setq snake-frame     (send JFrame 'newInstance)
+        snake-direction 'left
+        snake-timer     (send javax.swing.Timer 'newInstance +snake-delay+ (make-listener (lambda (e) (snake-update))))
+        snake-field     (snake-make-field +snake-width+ +snake-height+)
+        snake-pos       (cons 20 20)
+        snake-ring      (make-ring 8 (cons 20 20))
+        snake-score     0)
+  (with-object snake-frame
+    (addKeyListener
+     (make-listener (lambda (e)
+                      (when (= (send e 'getID) (field-value KeyEvent 'KEY_PRESSED))
+                        (let ((keycode (send e 'getKeyCode)))
+                          (cond ((and (= keycode (field-value KeyEvent 'VK_UP))    (not (eq? snake-direction 'down)))  (setq snake-direction 'up))
+                                ((and (= keycode (field-value KeyEvent 'VK_DOWN))  (not (eq? snake-direction 'up)))    (setq snake-direction 'down))
+                                ((and (= keycode (field-value KeyEvent 'VK_LEFT))  (not (eq? snake-direction 'right))) (setq snake-direction 'left))
+                                ((and (= keycode (field-value KeyEvent 'VK_RIGHT)) (not (eq? snake-direction 'left)))  (setq snake-direction 'right))
+                                ((= keycode (field-value KeyEvent 'VK_ESCAPE)) (send snake-frame 'dispose))))))))
+    (addWindowListener
+     (make-listener (lambda (e)
+                      (when (= (send e 'getID) (field-value WindowEvent 'WINDOW_CLOSED))
+                        (snake-stop-timer)
+                        (dolist (i '(snake-field snake-frame snake-pos snake-direction snake-timer snake-ring))
+                          (set i nil))))))
+    (setTitle "Orm")
+    (setDefaultCloseOperation (field-value JFrame 'DISPOSE_ON_CLOSE))
+    (setUndecorated t)
+    (setSize 640 480)
+    (setVisible t)
+    (createBufferStrategy 2)
+    (show))
+  (snake-start-timer +snake-delay+))
+
+(defun snake-draw ()
+  (let* ((bs (send snake-frame 'getBufferStrategy))
+         (g  (send bs 'getDrawGraphics)))
+    (send g 'clearRect 0 0 640 480)
+    (dotimes (y +snake-height+)
+      (dotimes (x +snake-width+)
+        (send g 'drawString (char->string (snake-get (cons x y))) (* (1+ x) 10) (* (1+ y) 10))))
+    (send g 'drawString  "Score: " 5 450)
+    (send g 'drawString (prin1-to-string snake-score) 50 450)
+    (send g 'dispose)
+    (send bs 'show)
+    (send (send Toolkit 'getDefaultToolkit) 'sync)))
+
+(defun snake-die ()
+  (snake-stop-timer)
+  (let ((a (send JOptionPane 'showConfirmDialog snake-frame "You die!")))
+    (cond ((= a 0))
+          ((= a 1) (send JOptionPane 'showMessageDialog snake-frame "That is not for you to decide."))
+          (t (send JOptionPane 'showMessageDialog snake-frame "???"))))
+  (with-object (send javax.swing.Timer 'newInstance 500 (make-listener (lambda (e) (send snake-frame 'dispose))))
+    (setRepeats false)
+    (start)))
+
+(defun snake-act ()
+  (cond ((eq? snake-direction 'up)    (rplacd snake-pos (- (cdr snake-pos) 1)))
+        ((eq? snake-direction 'down)  (rplacd snake-pos (+ (cdr snake-pos) 1)))
+        ((eq? snake-direction 'left)  (rplaca snake-pos (- (car snake-pos) 1)))
+        ((eq? snake-direction 'right) (rplaca snake-pos (+ (car snake-pos) 1))))
+  (cond ((or (char= (snake-get snake-pos) #\*)
+             (char= (snake-get snake-pos) #\#)) (snake-die))
+        ((char= (snake-get snake-pos) #\+) (inc snake-score)
+                                           (let ((ring-cdr (cdr snake-ring)))
+                                             (rplacd snake-ring
+                                                     (cons (cons (car snake-pos) (cdr snake-pos))
+                                                           ring-cdr))))
+        (t (snake-set (car snake-ring) #\.)
+           (rplaca snake-ring (cons (car snake-pos) (cdr snake-pos)))
+           (setq snake-ring (cdr snake-ring))))
+  (snake-set snake-pos #\*))
+
+(defun snake-put-food ()
+  (let ((x (send Math 'round (* (send Math 'random) (1- +snake-width+))))
+        (y (send Math 'round (* (send Math 'random) (1- +snake-height+)))))
+    (if (char= (snake-get (cons x y)) #\.) ;dots are the only places legible for food
+        (snake-set (cons x y) #\+)         ;put dot
+        (snake-put-food))))                ;try again
+
+(defun snake-update ()
+  (snake-act)
+  (when (< (* (send Math 'random) 100.0) 5.0)
+    (snake-put-food))
+  (snake-draw))
+
+(defun snake-start-timer (delay)
+  (with-object snake-timer
+    (setDelay delay)
+    (start)))
+
+(defun snake-stop-timer () (send snake-timer 'stop))
+
+(provide 'snake)

@@ -1,0 +1,49 @@
+;;;; test.ljsp
+;;; TODO: Test all the primitives exported from java
+
+;; Do some bootstrapping to avoid depending in stuff.ljsp
+;;; Bootstrapping BEGIN
+(set (quote defun)
+     (macro (a)
+       (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote lambda) (cdr (cdr a))) nil)))))
+
+;; IMPLEMENTED USING ONLY PRIMITIVES
+(set (quote defmacro)
+     (macro (a)
+       (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote macro) (cdr (cdr a))) nil)))))
+
+(defun end? (lst)
+  (if (atom? lst)
+      (if lst
+          (print (quote ERROL-not-list))
+          t)
+      nil))
+
+(defun not (obj) (eq? obj nil))
+(set (quote null?) not)
+(defun cons? (obj) (not (atom? obj)))
+(defun list? (lst)
+  (if (atom? lst)
+      (if lst nil t)
+      t))
+(defun zero? (n) (= n 0))
+
+(defun list (() . lst) lst)
+
+(defun list* (arg . others)
+  (if (null? others)
+      arg
+      (if (null? (cdr others))
+          (cons arg (car others))
+          ((lambda (roop)
+             (roop others)
+             (cons arg others))
+           (lambda (x)
+             (if (null? (cdr (cdr x)))
+                 (rplacd x (car (cdr x)))
+                 (roop (cdr x))))))))
+;;; Bootstrapping END
+
+(set 'tests nil)
+
+(defmacro deftest (a))  

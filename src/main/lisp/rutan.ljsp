@@ -1,0 +1,16 @@
+;;;; rutan.ljsp
+
+(require 'java)
+
+(defun rutan ()
+  (with-object (send JFrame 'newInstance "Rutan")
+    (setDefaultCloseOperation (field-value JFrame 'DISPOSE_ON_CLOSE))
+    (add (send JScrollPane 'newInstance
+               (with-object (send JTextArea 'newInstance 10 30)
+                 (setFont (send Font 'newInstance "mikachan-PB" (field-value Font 'PLAIN) 48))
+                 (setAutoscrolls t))))
+    (pack)
+    (show)))
+
+(provide 'rutan)
+  

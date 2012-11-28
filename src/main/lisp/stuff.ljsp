@@ -1,0 +1,1153 @@
+;-*- Mode: Lisp -*-
+
+;; Bootstrapping: begin!
+;; IMPLEMENTED USING ONLY PRIMITIVES
+(set (quote defun)
+     (macro (a)
+       (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote lambda) (cdr (cdr a))) nil)))))
+
+;; IMPLEMENTED USING ONLY PRIMITIVES
+(set (quote defmacro)
+     (macro (a)
+       (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote macro) (cdr (cdr a))) nil)))))
+
+(defun %load-loop (stream)
+  (if (eof? stream)
+      t
+      ((lambda () (eval (read stream))
+                  (%load-loop stream)))))
+
+(defun load (file)
+  ((lambda (stream)
+     (%load-loop stream)
+     (close stream))
+   (open file 'in)))
+
+(defun 1- (n) (- n 1))
+(defun 1+ (n) (+ n 1))
+
+(defun terpri rst
+  (write-char #\
+              (car rst))
+  nil)
+
+(defun print (obj . rst)
+  (prin1 obj (car rst))
+  (terpri (car rst))
+  obj)
+
+(defun displace (old new)
+  (rplaca old (car new))
+  (rplacd old (cdr new)))
+
+(defun error (str) (throw 'simple-error str)) ; Make me better, more like CL I guess.
+
+(defun end? (lst)
+  (if (atom? lst)
+      (if lst
+          (error "Not list!")
+          t)
+      nil))
+
+(defun not (obj) (eq? obj nil))
+(set (quote null?) not)
+(defun cons? (obj) (not (atom? obj)))
+(defun list? (lst)
+  (if (atom? lst)
+      (if lst nil t)
+      t))
+(defun zero? (n) (= n 0))
+(defun pos? (n) (if (zero? n) nil (not (neg? n))))
+(defun /= (a b) (not (= a b)))
+(defun < (a b) (neg? (- a b)))
+(defun > (a b) (neg? (- b a)))
+(defun <= (a b) (if (= a b) t (< a b)))
+(defun >= (a b) (if (= a b) t (> a b)))
+
+(defun list lst lst)
+
+(defun list* (arg . others)
+  (if (null? others)
+      arg
+      (if (null? (cdr others))
+          (cons arg (car others))
+          ((lambda (roop)
+             (roop others)
+             (cons arg others))
+           (lambda (x)
+             (if (null? (cdr (cdr x)))
+                 (rplacd x (car (cdr x)))
+                 (roop (cdr x))))))))
+
+(defmacro progn (a) (displace a
+  (list (list* (quote lambda) () (cdr a)))))
+
+(defun reverse (lst)
+  ((lambda (rev) (rev lst nil))
+   (lambda (lst acc)
+     (if (end? lst)
+         acc
+         (rev (cdr lst) (cons (car lst) acc))))))
+
+(set 'reverse! reverse)                 ; TODO: Implement actual reverse!
+
+(defmacro setq (a) (displace a
+  ((lambda (frob) (cons (quote progn) (frob (cdr a) nil)))
+   (lambda (lst acc)
+     (if (end? lst)
+         (reverse! acc)
+         (frob (cdr (cdr lst))
+               (cons (list (quote set) (list (quote quote) (car lst)) (car (cdr lst))) acc)))))))
+
+(defun nthcdr (n lst)
+  (if (zero? n)
+      lst
+      (nthcdr (- n 1) (cdr lst))))
+
+(defun nth (n lst) (car (nthcdr n lst)))
+
+;; (defun length (lst)
+;;   ((lambda (len) (len lst 0))
+;;    (lambda (lst acc)
+;;      (if (end? lst)
+;;          acc
+;;          (len (cdr lst) (+ acc 1))))))
+
+(defun caar (x) (car (car x)))
+(defun cadr (x) (car (cdr x)))
+(defun cdar (x) (cdr (car x)))
+(defun cddr (x) (cdr (cdr x)))
+(defun caaar (x) (car (car (car x))))
+(defun caadr (x) (car (car (cdr x))))
+(defun cadar (x) (car (cdr (car x))))
+(defun caddr (x) (car (cdr (cdr x))))
+(defun cdadr (x) (cdr (car (cdr x))))
+(defun cddar (x) (cdr (cdr (car x))))
+(defun cdddr (x) (cdr (cdr (cdr x))))
+(defun caaaar (x) (car (car (car (car x)))))
+(defun caaadr (x) (car (car (car (cdr x)))))
+(defun caadar (x) (car (car (cdr (car x)))))
+(defun caaddr (x) (car (car (cdr (cdr x)))))
+(defun cadaar (x) (car (cdr (car (car x)))))
+(defun cadadr (x) (car (cdr (car (cdr x)))))
+(defun caddar (x) (car (cdr (cdr (car x)))))
+(defun cadddr (x) (car (cdr (cdr (cdr x)))))
+(defun cdaaar (x) (cdr (car (car (car x)))))
+(defun cdaadr (x) (cdr (car (car (cdr x)))))
+(defun cdadar (x) (cdr (car (cdr (car x)))))
+(defun cdaddr (x) (cdr (car (cdr (cdr x)))))
+(defun cddaar (x) (cdr (cdr (car (car x)))))
+(defun cddadr (x) (cdr (cdr (car (cdr x)))))
+(defun cdddar (x) (cdr (cdr (cdr (car x)))))
+(defun cddddr (x) (cdr (cdr (cdr (cdr x)))))
+(setq rest   cdr
+      first  car
+      second cadr
+      third  caddr
+      fourth cadddr)
+(defun fifth   (x) (nth 5 x))
+(defun sixth   (x) (nth 6 x))
+(defun seventh (x) (nth 7 x))
+(defun eigth   (x) (nth 8 x))
+(defun ninth   (x) (nth 9 x))
+(defun tenth   (x) (nth 10 x))
+
+;; KLUDGE: Hinges on dynamic scoping (bad if I decide to change this in the future)
+;; Currently variables are evaluated in backwards order, but this is currently not a problem
+(defmacro let (a) (displace a
+  ((lambda (vars var-args parse-bindings)
+     (setq vars nil)
+     (setq var-args nil)
+     (parse-bindings (cadr a))
+     (cons (cons (quote lambda) (cons vars (cddr a)))
+           var-args))
+   nil
+   nil
+   (lambda (lst)
+     (if (end? lst)
+         nil
+         ((lambda ()
+            (if (list? (car lst))
+                ((lambda ()
+                   (setq vars (cons (caar lst) vars))
+                   (setq var-args (cons (cadar lst) var-args))))
+                ((lambda ()
+                   (setq vars (cons (car lst) vars))
+                   (setq var-args (cons nil var-args)))))
+            (parse-bindings (cdr lst)))))))))
+
+(defmacro let* (a) (displace a
+  (let ((clauses (cadr a))
+        (body    (cddr a))
+        (generate-lets (lambda (lst acc)
+                         (if (end? lst)
+                             (car acc)
+                             (generate-lets (cdr lst) (list (list* 'let (list (car lst)) acc)))))))
+    (generate-lets (reverse clauses) body))))
+
+(defmacro when (a)
+  (let ((test (cadr a))
+        (body (cddr a)))
+    (list (quote if) test (cons (quote progn) body))))
+
+(defmacro unless (a)
+  (let ((test (cadr a))
+        (body (cddr a)))
+    (list (quote if) (list (quote not) test) (cons (quote progn) body))))
+
+(if (running-compiled?)
+    nil                       ; define letrec compatible with compiler
+    (setq letrec let*))       ; as far as the dynamically scoped interpreter goes punning letrec to let* ought to do it
+
+(defmacro cond (a) (displace a
+  (let ((clauses (cdr a)))
+    (if (end? clauses)
+        nil
+        (let ((clause (first clauses))
+              (more (rest clauses)))
+          (if (atom? clause)
+              (error "Clause not list!")
+              (let ((test (first clause))
+                    (forms (rest clause)))
+                (if (end? forms)
+                    (let ((n-result (gensym)))
+                      (list (quote let) (list (list n-result test))
+                            (list (quote if) n-result
+                                  n-result
+                                  (cons (quote cond) more))))
+                    (if (eq? t test)
+                        (cons (quote progn) forms)
+                        (list (quote if) test
+                              (cons (quote progn) forms)
+                              (when more (cons (quote cond) more))))))))))))
+
+
+(defun reduce (fn lst)
+  (let ((roop (lambda (fn lst acc)
+                (if (end? lst)
+                    acc
+                    (roop fn (cdr lst) (fn acc (car lst)))))))
+    (roop fn (cdr lst) (car lst))))
+
+;; Make arithmetics awesomer
+;; Speed impact: ginormous
+;; Better do this in java...
+(setq i-like-slow nil)
+(when i-like-slow
+  (setq binary+ +
+        binary- -
+        binary* *
+        binary/ /)
+
+  (defun + numbers
+    (if (null? numbers)
+        0
+        (reduce binary+ numbers)))
+  
+  (defun - (number . more-numbers)
+    (if (null? more-numbers)
+        (binary- 0 number)
+        (reduce binary- (cons number more-numbers))))
+
+  (defun * numbers
+    (if (null? numbers)
+        1
+        (reduce binary* numbers)))
+
+  (defun / (number . more-numbers)
+    (if (null? more-numbers)
+        (/ 1 number)
+        (reduce binary/ (cons number more-numbers)))))
+
+
+;; Kinda icky to use due to dynamic scoping
+(defun remove-if (fn lst)
+  (let ((rem (lambda (fn lst acc)
+               (cond ((end? lst)     (reverse! acc))
+                     ((fn (car lst)) (rem fn (cdr lst) acc))
+                     (t              (rem fn (cdr lst) (cons (car lst) acc)))))))
+    (rem fn lst nil)))
+
+(defun append lsts
+  (let ((%append (lambda (x y)          ; NOT TAIL RECURSIVE
+                   (cond ((null? x) y)
+                         (t (cons (car x) (append (cdr x) y)))))))
+    (reduce %append lsts)))
+
+(defun flatten (lst)                   
+  (cond ((null? lst) nil)
+        ((atom? lst) (list lst))
+        (t (append (flatten (car lst))
+                   (flatten (cdr lst))
+                   nil))))
+
+(defun remove (item lst . rst)
+  (let* ((test (car rst))
+         (test (if test test eql?))
+         (rem (lambda (item lst test acc)
+                (cond ((end? lst)            (reverse! acc))
+                      ((test (car lst) item) (rem item (cdr lst) test acc))
+                      (t                     (rem item (cdr lst) test (cons (car lst) acc)))))))
+    (rem item lst test nil)))
+
+(defun %getf-helper (place indicator default)
+  (cond ((end? place)                default)
+        ((eq? indicator (car place)) place)
+        (t                           (%getf-helper (cddr place) indicator default))))
+
+(defun getf (place indicator . rst)
+  (let* ((sym (gensym)) ; This is a leading cause of excessive gensymmage. Try storing it globally or so instead.
+         (lst (%getf-helper place indicator sym)))
+    (if (eq? lst sym)
+        (car rst)                       ; default-value
+        (second lst))))
+    
+(defun %putf-helper (place indicator value)
+  (let* ((sym (gensym)) ; This is a leading cause of excessive gensymmage. Try storing it globally or so instead.
+         (lst (%getf-helper place indicator sym)))
+    (if (eq? lst sym)
+        (list* indicator value place)
+        (progn (rplaca (cdr lst) value) place))))
+
+
+;; UNHYGIENIC?
+(defmacro putf (a)
+  (let ((place     (second a))
+        (indicator (third a))
+        (value     (fourth a)))
+    (list 'setq place
+          (list '%putf-helper place indicator value))))
+
+;; So apply isn't primitive in this lisp...
+(defun apply (fn . args)
+  (let* ((add-quotes (lambda (lst)      ; NOT TAIL RECURSIVE
+                       (if (end? lst)
+                           nil
+                           (cons (list 'quote (car lst)) (add-quotes (cdr lst))))))
+         (roop (lambda (lst)            ; NOT TAIL RECURSIVE
+                 (if (end? (cdr lst))
+                     (car lst)
+                     (cons (car lst) (roop (cdr lst))))))
+         (args (add-quotes (if (cdr args)
+                               (roop args)
+                               (car args)))))
+    (eval (cons fn args))))
+
+(defun subst-symbols (tree . replacings)
+  (if (atom? tree)
+      (let* ((sym (gensym)) ; This is a leading cause of excessive gensymmage. Try storing it globally or so instead.
+             (x (getf replacings tree sym)))
+        (if (eq? x sym) tree x))
+      (cons (apply subst-symbols (car tree) replacings)
+            (apply subst-symbols (cdr tree) replacings))))
+
+;; Substitute matches in tree with gensyms
+(defun subst-with-gensyms (tree . symbols)
+  (let ((generate-substitutions
+         (lambda (lst acc)
+           (if (end? lst)
+               acc
+               (generate-substitutions (cdr lst) (list* (car lst) (gensym) acc))))))
+    (apply subst-symbols tree (generate-substitutions symbols nil))))
+
+(defmacro and (a)
+  (let ((forms (cdr a)))
+    (cond ((end? forms)        t)
+          ((end? (rest forms)) (first forms))
+          (t (subst-symbols '(if <test>
+                               (and . <rest>)
+                               nil)
+                            '<test> (first forms)
+                            '<rest> (rest forms))))))
+
+(defmacro or (a) 
+  (let ((forms (cdr a)))
+    (cond ((end? forms) nil)
+          ((end? (rest forms)) (first forms))
+          (t (subst-symbols '(let ((<n-result> <first>))
+                               (if <n-result>
+                                   <n-result>
+                                   (or . <rest>)))
+                            '<n-result> (gensym)
+                            '<first>    (first forms)
+                            '<rest>     (rest forms))))))
+
+
+
+;; Finds what variables are (re)bound in sexp
+;; FIXME: borkorod it seems
+(defun walk-for-rebinding (sexp . acc)
+  (let ((acc (car acc)))
+    (let ((handle-let (lambda (lst acc) ; lst <- the bindings argument of let
+                        (cond ((end? lst) acc)
+                              ((atom? (car lst)) (handle-let (cdr lst) (cons (car lst) acc)))
+                              (t (handle-let (cdr lst) (cons (caar lst) acc))))))
+          (handle-lambda (lambda (lst acc) ; lst <- the variable list of lambda
+                           (if (atom? lst)
+                               (if (null? lst)
+                                   acc
+                                   (cons lst acc)) ; we had a dotted list
+                               (handle-lambda (cdr lst) (cons (car lst) acc))))))
+      (cond ((atom? sexp) acc)
+            ((eq? (car sexp) 'lambda) (walk-for-rebinding ; should handle flambda and macro the same way
+                                       (cdr sexp)
+                                       (walk-for-rebinding
+                                        (cddr sexp)
+                                        (handle-lambda (cadr sexp) acc))))
+            ((eq? (car sexp) 'let) (walk-for-rebinding
+                                    (cdr sexp)
+                                    (walk-for-rebinding
+                                     (cddr sexp)
+                                     (handle-let (cadr sexp) acc))))
+            (t (walk-for-rebinding (cdr sexp) acc))))))
+
+#;(defmacro defun. (a)
+  (let ((name      (cadr  a))
+        (variables (caddr a))
+        (body      (cdddr a)))
+    (let ((generate-substitutions       ; PROBABLY TAIL RECURSIVE
+           (lambda (lst acc)
+             (if (atom? lst)
+                 (if (null? lst)
+                     acc
+                     (list* lst (gensym) acc)) ; we had a dotted list
+                 (generate-substitutions (cdr lst) (list* (car lst) (gensym) acc))))))
+      (list 'setq name (apply subst-symbols (list* 'lambda variables body)
+                              (generate-substitutions variables nil))))))
+
+(defmacro lambda. (a) (displace a
+  (let ((generate-substitutions       ; PROBABLY TAIL RECURSIVE
+         (lambda (lst acc)
+           (if (atom? lst)
+               (if (null? lst)
+                   acc
+                   (list* lst (gensym) acc)) ; we had a dotted list
+               (generate-substitutions (cdr lst) (list* (car lst) (gensym) acc))))))
+      (cons 'lambda (apply subst-symbols (cdr a)
+                           'lambda 'lambda.
+                           'let    'let.
+                           (generate-substitutions (cadr a) nil))))))
+
+(defmacro let. (a) (displace a
+  (let ((generate-substitutions
+         (lambda (lst acc)
+           (cond ((null? lst) acc)
+                 ((atom? (car lst)) (generate-substitutions (cdr lst) (list* (car lst) (gensym) acc)))
+                 (t                 (generate-substitutions (cdr lst) (list* (caar lst) (gensym) acc)))))))
+      (cons 'let (apply subst-symbols (cdr a)
+                        'lambda 'lambda.
+                        'let    'let.
+                        (generate-substitutions (cadr a) nil))))))
+
+;; TODO: depends on let. and lambda., should it?
+;; Like defun but avoids capturing variables. Uses gensyms to have
+;; "private" argument identifiers, sort-of solves the downward funargs problem.
+(defmacro defun. (a)
+  (let ((name (cadr a))
+        (rst  (cddr a)))
+    (list 'setq name (subst-symbols (cons 'lambda. rst)
+                                    'lambda 'lambda.
+                                    'let 'let.))))
+
+;; this evaluates everything in a lambda expression beforehand
+;; except for the arguments, basically generating a closure.
+;; This is a mess, seriously, maybe I should just implement passable environments, maybe i should just
+;; go lexical scoping which is the right way anyway.
+;; FIXME: This is broken too.
+;; (defun. function (fn)
+;;   (let ((variables (cadr fn))
+;;         (body      (cddr fn)))
+;;     (let ((generate-substitutions
+;;            (lambda (lst acc)
+;;              (if (end? lst)
+;;                  acc
+;;                  (generate-substitutions (cdr lst)
+;;                                          (list* (car lst)
+;;                                                 (list 'quote (symbol-value (car lst)))
+;;                                                 acc))))))
+;;       (list* 'lambda. variables (apply subst-symbols body
+;;                                        (generate-substitutions
+;;                                         (remove-if (lambda (x) (not (some (lambda (y) (eq? x y)) variables))) ; BAD BAD BAD
+;;                                                    (flatten body))
+;;                                         nil))))))
+    
+                     
+(defun %time (fn)
+  (let ((t0 (get-time)) result time)
+    (set 'result (fn))
+    (set 'time (- (get-time) t0))
+    (write-string "Execution time: ")
+    (prin1 time)
+    (write-string " ms")
+    (terpri)
+    result))
+
+(defmacro time (a)
+  (list '%time (list* 'lambda '() (cdr a))))
+
+(defun. call-times (count fn)
+  (let ((count-minus-one (- count 1))
+        (roop (lambda (i)
+                (if (= i count-minus-one)
+                    (fn i)
+                    (progn
+                      (fn i)
+                      (roop (+ i 1)))))))
+    (roop 0)))
+
+(defmacro dotimes (a) (displace a
+  (let* ((var-count-result (cadr a))
+         (body             (cddr a))
+         (var    (first  var-count-result))
+         (count  (second var-count-result))
+         (result (third  var-count-result)))
+    (list 'progn (list 'call-times count (list* 'lambda (list var) body))
+          result))))
+    
+
+#;(defun call-for-list (lst fn)
+  (cond ((end? (cdr lst)) (fn (car lst)))
+        (t                (fn (car lst))
+                          (call-for-list (cdr lst) fn))))
+;; KLUDGE: Since I use dynamic scoping in my lisp I'm forced to use gensyms for the
+;;         variables of some functions accepting functions. (NOTE: dynamic scoping, while easy to implement,
+;;         is a twisty maze of symbols all alike)
+;;         But closures might just be doable with dynamic scoping anyhow hmm
+(defun. call-for-list (lst fn)
+  (cond ((end? lst)       nil)
+        ((end? (cdr lst)) (fn (car lst)))
+        (t                (fn (car lst))
+                          (call-for-list (cdr lst) fn))))
+                     
+;; (let ((lst-sym (gensym))
+;;       (fn-sym  (gensym)))
+;;   (setq call-for-list (list 'lambda (list lst-sym fn-sym)
+;;                             (list 'cond
+;;                                   (list (list 'end? (list 'cdr lst-sym))
+;;                                         (list fn-sym (list 'car lst-sym)))
+;;                                   (list 't
+;;                                         (list fn-sym (list 'car lst-sym))
+;;                                         (list 'call-for-list (list 'cdr lst-sym) fn-sym))))))
+
+(defmacro dolist (a) (displace a
+  (let ((var-lst-result (cadr a)))                               
+    (subst-symbols '(progn
+                      (call-for-list <lst> (lambda (<var>) . <body>))
+                      <result>)
+     '<var>    (first  var-lst-result)
+     '<lst>    (second var-lst-result)
+     '<result> (third  var-lst-result)
+     '<body>   (cddr a)))))
+                 
+;; (defmacro dolist (a) (displace a
+;;   (let* ((var-lst-result (cadr a))
+;;          (body           (cddr a))
+;;          (var    (first  var-lst-result))
+;;          (lst    (second var-lst-result))
+;;          (result (third  var-lst-result)))
+;;     (list 'progn (list 'call-for-list lst (list* 'lambda (list var) body))
+;;           result))))
+
+#;(defun mapcar (fn lst)
+  ((lambda (mapcar-helper) (mapcar-helper fn lst nil))
+   (lambda (fn lst acc)
+     (if (end? lst)
+         acc
+         (mapcar-helper fn (cdr lst) (cons (fn (car lst)) acc))))))
+
+;; NOT TAIL RECURSIVE
+(defun mapcar1 (fnx lstx)
+  (if (end? lstx)
+      nil
+      (cons (fnx (car lstx)) (mapcar1 fnx (cdr lstx)))))
+
+(defun some (predicate . sequences)
+  (cond ((if (= (length sequences) 1)
+             (end? (car sequences))
+             (some end? sequences)) nil)
+        ((apply predicate (mapcar1 car sequences)))
+        (t (apply some predicate (mapcar1 cdr sequences)))))
+
+;; NOT TAIL RECURSIVE
+(defun mapcar (fnx . lstsx)
+  (if (some end? lstsx)
+      nil
+      (cons (apply fnx (mapcar1 car lstsx)) (apply mapcar fnx (mapcar1 cdr lstsx)))))
+
+;; ;; NOT TAIL RECURSIVE
+;; ;; copies only surface layer
+;; (defun copy-list (lst)
+;;   (if (end? lst)
+;;       nil
+;;       (cons (car lst) (copy-list (cdr lst)))))
+
+;; NOT TAIL RECURSIVE
+(defun copy-list (lst)
+  (if (atom? lst)
+      lst
+      (cons (copy-list (car lst)) (copy-list (cdr lst)))))
+
+;; TODO: write find working on sequences?
+(defun member (item lst)
+  (cond ((end? lst)            nil)
+        ((eql? item (car lst)) lst)
+        (t                     (member item (cdr lst))))) 
+
+(defun acons (key value alist) (cons (cons key value) alist))
+
+(defun pairlis (keys data . rst)
+  (let ((alist (car rst)))
+    (append (mapcar (lambda (x y) (cons x y)) keys data) alist)))
+
+;; ADD OPTIONAL COMPARE FN
+(defun assoc (key alist)
+  (cond ((end? alist)            nil)
+        ((eql? key (caar alist)) (car alist))
+        (t                       (assoc key (cdr alist)))))
+
+;; ADD OPTIONAL COMPARE FN
+(defun rassoc (key alist)
+  (cond ((end? alist)            nil)
+        ((eql? key (cdar alist)) (car alist))
+        (t                       (rassoc key (cdr alist)))))
+
+(defun assq (key alist)
+  (cond ((end? alist)           nil)
+        ((eq? key (caar alist)) (car alist))
+        (t                      (assq key (cdr alist)))))
+
+(defun rassq (key alist)
+  (cond ((end? alist)           nil)
+        ((eq? key (cdar alist)) (car alist))
+        (t                      (rassq key (cdr alist)))))
+         
+(let ((definer (macro (a)
+                 (subst-symbols '(defmacro <name> (a)
+                                   (subst-symbols '(setq <place> (<fun> <place> <delta>))
+                                                  '<place> (second a)
+                                                  '<delta> (if (third a) (third a) 1)))
+                                  '<name> (second a)
+                                  '<fun>  (third a)))))
+  (definer inc +)
+  (definer dec -))
+
+(defmacro push (a)
+  (subst-symbols '(setq <place> (cons <obj> <place>))
+                 '<obj>   (second a)
+                 '<place> (third a)))
+
+(defmacro pop (a)
+  (subst-symbols '(let ((<save> (car <place>)))
+                    (setq <place> (cdr <place>))
+                    <save>)
+                 '<save>  (gensym)
+                 '<place> (second a)))
+
+;; UNHYGIENIC?
+;; (defmacro push (a)
+;;   (let ((obj   (second a))
+;;         (place (third a)))
+;;     (list 'setq place (list 'cons obj place))))
+
+;; UNHYGIENIC?
+;; (defmacro pop (a)
+;;   (let ((save-sym (gensym))
+;;         (lst-var  (second a)))
+;;     (list (quote let) (list (list save-sym (list (quote car) lst-var)))
+;;           (list (quote setq) lst-var (list (quote cdr) lst-var))
+;;           save-sym)))
+
+(defun macroexpand (form)
+  (let ((mac (eval (first form))))
+    (cond ((eq? (first mac) (quote macro))
+           (let ((macro-fn (cons (quote lambda) (cdr mac))))
+             (eval (list macro-fn (list (quote quote) form)))))
+          (t (error "I-liek-the-first-thing-to-be-a-macro-for-now")))))
+
+;; (defun factorial (n)
+;;   (if (zero? n)
+;;       1
+;;       (* n (factorial (- n 1)))))
+
+(defun factorial (n)
+  (let ((fact (lambda (n acc)
+                (if (zero? n)
+                    acc
+                    (fact (- n 1) (* n acc))))))
+    (fact n 1)))
+
+(defun fib (n)
+  (if (= n 0)
+      0
+      (if (= n 1)
+          1
+          (+ (fib (- n 1)) (fib (- n 2))))))
+
+(defun fib-trec (n)
+  ((lambda (calc-fib) (calc-fib n 0 1))
+   (lambda (n a b)
+     (if (= n 0)
+         a
+         (calc-fib (- n 1) b (+ a b))))))
+
+(setq fib-memo-table (quote ((0 . 0) (1 . 1))))
+(defun fib-memo (n)
+  (let ((ass (assoc n fib-memo-table)))
+    (if ass
+        (cdr ass)
+        (let ((result (+ (fib-memo (- n 1)) (fib-memo (- n 2)))))
+          (setq fib-memo-table (acons n result fib-memo-table))
+          result))))
+
+(setq foo-memo-table (quote ((0 . 0) (1 . 1))))
+(defun foo-memo (n)
+  (let ((ass (assoc n foo-memo-table)))
+    (if ass
+        (cdr ass)
+        (let ((result (- (* 5 (foo-memo (- n 1))) (* 6 (foo-memo (- n 2))))))
+          (setq foo-memo-table (acons n result foo-memo-table))
+          result))))
+
+
+(defun memoize-fn (fn-name)
+  (let ((table-sym (gensym))
+        (ass-sym   (gensym))
+        (arg-sym   (gensym))
+        (args-sym  (gensym))
+        (fn (symbol-value fn-name)))
+    (set table-sym nil)
+    (set fn-name
+         (subst-symbols
+          '(lambda (<arg-sym> . <args-sym>)
+             (let ((<args-sym> (cons <arg-sym> <args-sym>)))
+               (let ((<ass-sym> (assoc <args-sym> <table-sym> equal)))
+                 (if <ass-sym>
+                     (cdr <ass-sym>)
+                     (let ((result (apply <fn> <args-sym>)))
+                       (setq <ass-sym> (acons <args-sym> result <table-sym>))
+                       result)))))
+          '<arg-sym> arg-sym
+          '<args-sym> args-sym
+          '<ass-sym> ass-sym
+          '<table-sym> table-sym
+          '<fn> fn))))
+  
+(defun collatz (n)
+  (print n)
+  (if (= n 1)
+      nil
+      (collatz (if (= (mod n 2) 0)
+                   (/ n 2)
+                   (+ 1 (* n 3))))))
+
+(defun is-prime (n)
+  (let ((roop (lambda (a)
+                (cond ((= a n)            t)
+                      ((zero? (mod n a)) nil)
+                      (t                 (roop (+ a 2)))))))
+  (cond ((= n 1) nil)
+        ((= n 2) t)
+        ((zero? (mod n 2)) nil)
+        (t (roop 3)))))
+
+(defun wn-zero? (n) (not n))
+(defun wn1+ (n) (cons nil n))
+(defun wn1- (n) (cdr n))
+
+(defun to-wn (n)
+  (let ((roop (lambda (n acc)
+                (if (zero? n)
+                    acc
+                    (roop (- n 1) (wn1+ acc))))))
+    (roop n nil)))
+
+(defun wn+ (n1 n2)
+  (if (wn-zero? n2)
+      n1
+      (wn+ (wn1+ n1) (wn1- n2))))
+
+(defun wn- (n1 n2)
+  (if (wn-zero? n2)
+      n1
+      (wn- (wn1- n1) (wn1- n2))))
+
+(defun wn* (n1 n2)
+  (let ((roop (lambda (a b)
+                (if (wn-zero? b)
+                    a
+                    (roop (wn+ a n1) (wn1- b))))))
+    (roop n1 (wn1- n2))))
+    
+(defun factorial-wn (n)
+  (let ((fact (lambda (n acc)
+                (if (wn-zero? n)
+                    acc
+                    (fact (wn1- n) (wn* n acc))))))
+    (fact n (wn1+ nil))))
+
+(defmacro backwards (a)
+  (print (quote expanding-macaroni))
+  (displace a
+            (reverse (cadr a))))
+
+(defun cond-test (a)
+  (cond ((= a 3) (* a 2))
+        ((= a 5) (/ a 2))
+        (t       (* a 3))))
+
+;; ;; TODO: Optional stream param
+;; (defun read-string ()
+;;   (let ((roop (lambda (acc)
+;;                 (let ((char (read-char)))
+;;                   (if (= char #\
+;;                          )
+;;                       (reverse acc)
+;;                       (roop (cons char acc)))))))
+;;     (roop nil)))
+
+;; (defun read-string rst
+;;   (let ((stream (if (first rst)
+;;                     (first rst)
+;;                     *standard-input*)))
+    
+                    
+
+;; ;; TODO: Optional stream param
+;; (defun write-string (str)
+;;   (cond ((end? str) nil)
+;;         (t          (write-char (car str))
+;;                     (write-string (cdr str)))))
+(defun write-string (str . rst)
+  (let ((stream (if rst (car rst) *standard-output*)))
+    (dotimes (i (length str))
+      (write-char (aref str i) stream))))
+
+(defun generate-ascii-table (listfist)
+  (let ((roop (lambda (lst i acc)
+                (if (end? lst)
+                    acc
+                    (roop (cdr lst) (+ i 1) (acons (car lst) i acc))))))
+    (roop listfist 0 nil)))
+
+(setq ascii-table (generate-ascii-table
+                   '(NUL SOH STX ETX EOT ENQ ACK BEL BS TAB LF VT FF CR SO SI DLE DC1
+                     DC2 DC3 DC4 NAK SYN ETB CAN EM SUB ESC FS GS RS US | | !
+                     |"| |#| $ % & |'| |(| |)| * + , - |.| / 0 1 2 3 4 5 6 7 8 9
+                     : |;| < = > ? @ A B C D E F G H I J K L M N O P Q R S T U V W
+                     X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w
+                     x y z { || } ~ DEL)))
+
+(defun to-string (lst)
+  (let ((roop (lambda (lst acc)
+                (if (end? lst)
+                    (reverse acc)
+                    (roop (cdr lst) (cons (cdr (assoc (car lst) ascii-table)) acc))))))
+    (roop lst nil)))
+
+(defun from-string (lst)
+  (let ((roop (lambda (lst acc)
+                (if (end? lst)
+                    (reverse acc)
+                    (roop (cdr lst) (cons (car (rassoc (car lst) ascii-table)) acc))))))
+    (roop lst nil)))
+
+;; ;; Use varargs instead, when you get it 
+;; (defmacro make-list (a)
+;;   (list '%make-list (cadr a) (caddr a)))
+
+(defun make-list (size . initial-element)
+  (let ((initial-element (car initial-element))
+        (listmaker (lambda (n acc)
+                     (if (zero? n)
+                         acc
+                         (listmaker (- n 1) (cons initial-element acc))))))
+    (listmaker size nil)))
+
+(defun make-graph (n) (cons 'graph (make-list n)))
+
+(defun graph? (obj) (eq? (car obj) 'graph))
+
+(defun graph-add-edge (graf from to)
+  (unless (graph? graf)
+    (error "Not graph"))
+  (let ((f (+ from 1))
+        (t (+ to 1)))
+    (rplaca (nthcdr f graf) (cons to   (nth f graf))) ;Inefficient as hell this is
+    (rplaca (nthcdr t graf) (cons from (nth t graf))))
+  graf)
+
+(defun graph-num-vertices (graf)
+  (unless (graph? graf)
+    (error "Not graph"))
+  (- (length graf) 1))
+
+(defun graph-get-adjacent-edges (graf v) (nth (+ v 1) graf))
+
+(defun depth-first-search (graf a fn)
+  (unless (graph? graf)
+    (error "Not graph"))
+  (let ((visited (make-list (graph-num-vertices graf) nil))
+        (dfs     (lambda (a)
+                   (unless (nth a visited)  ;Inefficient (I might just need arrays in this lisp)
+                     (rplaca (nthcdr a visited) t)
+                     (fn graf a)
+                     ;; Och här slår man i problemen med dynamic scoping. call-for-list har en parameter vid namn fn
+                     (call-for-list (graph-get-adjacent-edges g a) dfs)))))
+    (dfs a)))
+
+(defun gcd (a b)
+  (if (zero? b)
+      a
+      (gcd b (- a (* b (/ a b))))))
+
+(defun read-from-string (str)
+  (let ((stream (make-string-input-stream str)))
+    (read stream)))
+
+(defmacro with-output-to-string (a) (displace a
+  (subst-symbols '(let ((<var> (make-string-output-stream)))
+                    <body>
+                    (get-output-stream-string <var>))
+                 '<var>  (if (atom? (cadr a)) (cadr a) (caadr a)) ; Continue supporting alternate syntax (with-output-to-string stream blah) ?
+                 '<body> (list* 'progn (cddr a)))))
+
+(defmacro with-open-file (a)
+  (subst-symbols '(let* ((<stream> (open <file> '<direction>))
+                         (<result> (progn . <body>)))
+                      (close <stream>)
+                      <result>)
+                 '<stream> (caadr a)
+                 '<file> (cadadr a)
+                 '<direction> (caddr (cadr a))
+                 '<result> (gensym)
+                 '<body> (cddr a)))
+  
+
+(defun prin1-to-string (obj)
+  (with-output-to-string (stream)
+    (prin1 obj stream)))
+
+(defmacro nlet (a)
+  (subst-symbols '(letrec ((<name> (lambda <funvars> . <body>)))
+                    (<name> . <funargs>))
+                 '<name>    (cadr a)
+                 '<body>    (cdddr a)
+                 '<funvars> (mapcar car  (caddr a))
+                 '<funargs> (mapcar cadr (caddr a))))
+
+;; ;; For compatibility with the nlambda of the compiler
+;; ;; COULD BECOME OBSOLETE IN FUTURE (or maybe not primitive from the compiler)
+;; (unless (running-compiled?)
+;;   (defmacro nlambda (a)
+;;     (subst-symbols '(let ((<name> (lambda . <rest>)))
+
+;; Poor mans symbol-macrolet right here. If I introduce lexical bindings this version of it
+;; will be downright nasty. ONLY GOOD WITH DYNAMIC SCOPING
+(defmacro symbol-macrolet (a) 
+  (let ((generate-args (lambda (lst acc)
+                         (if (end? lst)
+                             acc
+                             (generate-args (cdr lst) (list* (first (car lst)) (second (car lst)) acc))))))
+    (list* 'progn (apply subst-symbols (cddr a) (generate-args (cadr a) nil)))))
+
+;; TODO: have this macro replace setq's in body for putfs
+(defmacro with-plist (a) 
+  (subst-symbols '(symbol-macrolet <macrolet-args> . <body>)
+                 '<macrolet-args> (mapcar (lambda (x)
+                                            (subst-symbols '(<x> (getf <plist> '<x>))
+                                                           '<x> x
+                                                           '<plist> (caddr a)))
+                                          (cadr a))
+                 '<body> (cdddr a)))
+
+;; FIXME: doesn't behave well on dotted lists
+(defun last (lst)
+  (if (end? (cdr lst))
+      lst
+      (last (cdr lst))))
+
+;; (defun butlast! (lst . rst)
+;;   (let ((roop (lambda (lst prev n)
+;;                 (let ((x (nthcdr n lst)))
+;;                   (if (end? x)
+;;                       (rplacd prev nil)
+;;                       (butlast! x lst n))))))
+;;     (roop (nthcdr n lst) lst (if (first rst) (first rst) 1))
+;;     lst))
+
+(defun butlast! (lst . rst)
+  (let ((n (if (first rst) (first rst) 1))
+        (len (length lst)))
+    (unless (<= len n)
+      (rplacd (nthcdr (- (- len n) 1) lst) nil)
+      lst)))
+
+(defun butlast (lst . rst) (butlast! (copy-list lst) (first rst)))
+             
+(defun rotate-left (lst)
+  ;; "Move the first element to the end of LIST."
+  (append (cdr lst) (list (car lst))))
+
+(defun rotate-left! (lst)
+  ;; "Destructively move the first element to the end LIST."
+  (let ((tail (cdr lst)))
+    (if tail
+        (progn
+          (rplacd lst nil)
+          (rplacd (last tail) lst)
+          tail)
+      lst)))
+
+(defun rotate-right (lst)
+  ;; "Move the last element to the front of LIST."
+  (append (last lst) (butlast lst)))
+
+(defun rotate-right! (lst)
+  ;; "Destructively move the last element to the front of LIST."
+  (unless (cdr lst) (return-from rotate-right! lst))
+  (let ((last (last lst)))
+    (rplacd last (butlast! lst))
+    last))
+
+(defun make-ring (size . initial-element)
+  (let* ((initial-element (car initial-element))
+         (ring (make-list size initial-element)))
+    (rplacd (last ring) ring)))
+
+(defun ring-length (ring)
+  (if ring
+      (let ((first-element (first ring)))
+        (let ((roop (lambda (ring len)
+                      (if (eq? (car ring) first-element)
+                          len
+                          (roop (cdr ring) (1+ len))))))
+          (roop (cdr ring) 1)))
+      0))
+
+(defun char->string (ch) (make-string 1 ch))
+
+;; TODO: allow otherwise only last?
+;;       handle lists like (or 1 2 3 ...) (and 1 2 3 ...)
+(defmacro case (a)
+  (let ((var (cadr a))
+        (lst (cddr a))
+        (sym (gensym)))
+    (let ((generate-ors-ands (lambda (lst acc)
+                               (if (end? lst)
+                                   (reverse acc)
+                                   (generate-ors-ands (cdr lst) (cons (list 'eql? sym (list 'quote (car lst))) acc))))))
+      (subst-symbols '(let ((<sym> <var>))
+                        (cond . <body>))
+                     '<sym> sym
+                     '<var> var
+                     '<body> (mapcar (lambda (x)
+                                       (cond ((and (list? (car x)) (eq? (caar x) 'and)) (cons (cons 'and (generate-ors-ands (cdar x) nil)) (cdr x)))
+                                             ((and (list? (car x)) (eq? (caar x) 'or))  (cons (cons 'or  (generate-ors-ands (cdar x) nil)) (cdr x)))
+                                             ((eq? (car x) 'otherwise) (cons 't (cdr x)))
+                                             (t (subst-symbols '((eql? <sym> '<comparison>) . <body>)
+                                                               '<sym> sym ; works with both dynamic and lexical scoping (however not with static)
+                                                               '<comparison> (car x)
+                                                               '<body> (cdr x)))))
+                                     lst)))))
+
+;; (defmacro case (a)
+;;   (let ((var (cadr a))
+;;         (lst (cddr a))
+;;         (sym (gensym)))
+;;     (subst-symbols '(let ((<sym> <var>))
+;;                       (cond . <body>))
+;;                    '<sym> sym
+;;                    '<var> var
+;;                    '<body> (mapcar (lambda (x)
+;;                                      (cond ((eq? (car x) 'otherwise) (cons 't (cdr x)))
+;;                                            (t (subst-symbols '((eql? <sym> '<comparison>) . <body>)
+;;                                                              '<sym> sym ; works with both dynamic and lexical scoping (however not with static)
+;;                                                              '<comparison> (car x)
+;;                                                              '<body> (cdr x)))))
+;;                                    lst))))
+
+(defun hash=  (a b) (=  (sxhash a) (sxhash b)))
+(defun hash/= (a b) (/= (sxhash a) (sxhash b)))
+(defun hash<  (a b) (<  (sxhash a) (sxhash b)))
+(defun hash>  (a b) (>  (sxhash a) (sxhash b)))
+(defun hash<= (a b) (<= (sxhash a) (sxhash b)))
+(defun hash>= (a b) (>= (sxhash a) (sxhash b)))
+
+
+;; Is this the basis for a merge sort? Only time will tell... (also: NOT TAIL RECURSIVE)
+(defun merge (a b comparison)
+  (cond ((end? a) b)
+        ((end? b) a)
+        ((comparison (car a) (car b)) (cons (car a) (merge (cdr a) b comparison)))
+        (t                            (cons (car b) (merge a (cdr b) comparison)))))
+
+(defun sort-list (lst . rst)
+  ;; TODO: possible optimization?!: copy and count length at the same time
+  (let ((comparison (if rst (car rst) <)))
+    (%sort-list (copy-list lst) comparison (length lst))))
+
+;; Sort lst (sort of destructively yet not in place and not without
+;; allocating up a new list). Uses merge-sort. Helper function. Will
+;; be called upon with a newly copied list so we don't have to feel so
+;; very bad about destroying it.
+;; TODO: rewrite me with a merge that has numbers for keeping track of
+;; where in the list it is! Thus no splitting will be neccesary
+(defun %sort-list (lst comparison len)
+  (if (= len 1)
+      lst
+      (letrec ((lower-part (ash len -1))
+               (upper-part (ash (1+ len) -1))
+               (split (lambda (lst cntr)                ; This messes up the time-complexity of the algorithm by introducing an unnecesary linear portion. wee!
+                        (if (< cntr lower-part)         ; mergesort isn't all that optimizsed for linked lists...
+                            (split (cdr lst) (1+ cntr))
+                            (let ((res (cdr lst)))
+                              (rplacd lst nil) ; split lst
+                              res))))
+               (lst-upper (split lst 1)))
+        (merge (%sort-list lst comparison lower-part)
+               (%sort-list lst-upper comparison upper-part)
+               comparison))))
+
+;; Think unix command uniq. You got it!
+(defun uniq (lst . rst)
+  (let ((eq-fn (if rst (car rst) eql?))) ; default to comparing with eql?
+    (letrec ((roop (lambda (lst acc)
+                     (if (end? lst)
+                         (reverse! acc)
+                         (roop (cdr lst) (if (eq-fn (car acc) (car lst))
+                                             acc
+                                             (cons (car lst) acc)))))))
+      (roop lst nil))))
+
+(defun symbol-concat symbol-list
+  (intern (with-output-to-string (*standard-output*)
+            (call-for-list symbol-list prin1))))
+
+
+(defun find-char (str ch)
+  (nlet roop ((i 0))
+    (if (char= (aref str i) ch)
+        i
+        (roop (1+ i)))))
+
+(defun cut-string-at-char (str ch)
+  (let* ((size (find-char str ch))
+         (res (make-string size #\,)))
+    (dotimes (i size)
+      (aset res i (aref str i)))
+    res))
+
+    
+(setq *features* nil)
+(defun require (module)
+  (unless (member module *features*)
+    (rerequire module)))
+
+(defun rerequire (module)
+  (load (prin1-to-string (symbol-concat module '|.ljsp|)))) ; KLUDGE: replace me with proper string concatentation blahablaha
+
+(defun provide (module)
+  (unless (member module *features*)
+    (push module *features*)))
+
+(provide 'stuff)

@@ -1,0 +1,117 @@
+;;;; ljsp.ljsp
+
+(require 'stuff)
+(require 'java)                         ; some new built-in subrs could remedy the need for this here
+
+(defun ljsp-export rst
+  (mapcar (lambda (x) (cons x (symbol-value x))) rst))
+
+(setq *ljsp-default-environment* (ljsp-export 'cons
+                                              'car
+                                              'cdr
+                                              'rplaca
+                                              'rplacd
+                                              'eq?
+                                              'atom?
+                                              'eval ;FIXAME
+                                              'symbols
+                                              'gensym 
+                                              'intern 
+                                              '+
+                                              '-
+                                              '*
+                                              '/
+                                              'mod
+                                              'ash
+                                              'neg?
+                                              'eql?
+                                              '=
+                                              'char=
+                                              'aref
+                                              'aset
+                                              'exit
+                                              'get-time
+                                              'open
+                                              'close
+                                              'eof?
+                                              'make-listener
+                                              'make-runnable
+                                              'make-string-input-stream
+                                              'make-string-output-stream
+                                              'get-output-stream-string
+                                              '%try
+                                              'throw
+                                              'make-array
+                                              'make-string
+                                              'equal?
+                                              'sxhash
+                                              'Class
+                                              '*standard-output*
+                                              '*standard-input*
+                                              '*standard-error*
+                                              't
+                                              'nil))
+
+(defun ljsp-evlis (m a)
+  (cond ((null? m) '())
+        (t (cons (ljsp-eval  (car m) a)
+                 (ljsp-evlis (cdr m) a)))))
+
+(defun ljsp-evprogn (m a)
+  (cond ((null? (cdr m)) (ljsp-eval (car m) a))
+        (t (ljsp-eval (car m) a)
+           (ljsp-evprogn (cdr m) a))))
+
+(defun var-or-what (e alternative a)
+  (let ((tmp (ljsp-eval e a)))
+    (if tmp tmp (cdr (assoc alternative a)))))
+
+(defun ljsp-lambda-list-bind (x y a)
+  (let ((roop (lambda (x y)
+                (cond ((cons? x) (cons (cons (car x) (car y)) (roop (cdr x) (cdr y))))
+                      ((null? x) nil)
+                      (t (list (cons x y)))))))
+    (append (roop x y) a)))
+
+(defun ljsp-eval (e a)
+  (cond
+    ((send Symbol 'isInstance e) (cdr (assoc e a))) ; subr symbol? might help
+    ((atom? e) e)
+    ((atom? (car e))
+     (cond
+       ((eq? (car e) 'quote)        (cadr e))
+       ((eq? (car e) 'if)           (if (ljsp-eval (cadr e) a)
+                                        (ljsp-eval (caddr e) a)
+                                        (ljsp-eval (cadddr e) a)))
+       ((eq? (car e) 'prin1)        (prin1 (ljsp-eval (cadr e) a) (var-or-what (caddr e) '*standard-output* a)))
+       ((eq? (car e) 'symbol-value) (cdr (assoc (ljsp-eval (cadr e) a) a)))
+       ((eq? (car e) 'read-char)    (read-char (ljsp-eval (cadr e) a) (var-or-what (caddr e) '*standard-input* a)))
+       ((eq? (car e) 'write-char)   (write-char (ljsp-eval (cadr e) a) (var-or-what (caddr e) '*standard-output* a)))
+       ((eq? (car e) 'read)         (read (ljsp-eval (cadr e) a) (var-or-what (caddr e) '*standard-input* a)))
+       ((eq? (car e) 'set)          (let* ((sbl (ljsp-eval (cadr e) a))
+                                           (new-value (ljsp-eval (caddr e) a))
+                                           (tmp (assoc sbl a)))
+                                      (if tmp
+                                          (rplacd tmp new-value)
+                                          (rplacd (last a) (list (cons sbl new-value))))
+                                      new-value))
+       ((eq? (car e) 'get-environment) a)
+       ((or (eq? (car e) 'lambda)
+            (eq? (car e) 'macro))   e)
+       ((or (send Procedure 'isInstance (car e))
+            (send Class     'isInstance (car e))) (apply (car e) (ljsp-evlis (cdr e) a))) ; subr function? might help
+       (t (ljsp-eval (cons (cdr (assoc (car e) a))
+                           (cdr e))
+                     a))))
+    ((eq? (caar e) 'lambda)
+     (ljsp-evprogn (cddar e)
+                   (ljsp-lambda-list-bind (cadar e) (ljsp-evlis (cdr e) a) a)))
+    ((eq? (caar e) 'macro)
+     (ljsp-eval (ljsp-eval (list (cons 'lambda (cdar e)) (list 'quote e)) a) a))))
+
+(defun ljsp-repl ()
+  (print (ljsp-eval (read) *ljsp-default-environment*))
+  (ljsp-repl))
+    
+
+(provide 'ljsp)                              

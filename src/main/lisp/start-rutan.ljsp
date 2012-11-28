@@ -1,0 +1,2 @@
+(require 'rutan)
+(send (rutan) 'setDefaultCloseOperation (field-value JFrame 'EXIT_ON_CLOSE))

@@ -1,0 +1,297 @@
+;-*- Mode: Lisp -*-
+;;;; java.ljsp
+
+(require 'stuff)
+
+;; Rack down the parenthesis-count a little...
+(defun send (obj msg . args) (apply (obj msg) args))
+
+(defun fetch-java-classes clazzes
+  (let ((roop (lambda (lst)
+                (unless (end? lst)
+                  (set (car lst) (send Class 'forName (cadr lst)))
+                  (roop (cddr lst))))))
+    (roop clazzes)))
+
+(fetch-java-classes 'Array               "java.lang.reflect.Array"
+                    'Arrays              "java.util.Arrays"
+                    'ArrayList           "java.util.ArrayList"
+                    'String              "java.lang.String"
+                    'StringBuilder       "java.lang.StringBuilder"
+                    'HashMap             "java.util.HashMap"
+                    'JFrame              "javax.swing.JFrame"
+                    'JLabel              "javax.swing.JLabel"
+                    'JPanel              "javax.swing.JPanel"
+                    'JButton             "javax.swing.JButton"
+                    'JFormattedTextField "javax.swing.JFormattedTextField"
+                    'JTextField          "javax.swing.JTextField"
+                    'JTextArea           "javax.swing.JTextArea"
+                    'JPanel              "javax.swing.JPanel"
+                    'JScrollPane         "javax.swing.JScrollPane"
+                    'JList               "javax.swing.JList"
+                    'JOptionPane         "javax.swing.JOptionPane"
+                    'Box                 "javax.swing.Box"
+                    'DefaultListModel    "javax.swing.DefaultListModel"
+                    'javax.swing.Timer   "javax.swing.Timer"
+                    'Thread              "java.lang.Thread"
+                    'ActionEvent         "java.awt.event.ActionEvent"
+                    'KeyEvent            "java.awt.event.KeyEvent"
+                    'MouseEvent          "java.awt.event.MouseEvent"
+                    'WindowEvent         "java.awt.event.WindowEvent"
+                    'EventQueue          "java.awt.EventQueue"
+                    'Color               "java.awt.Color"
+                    'GridLayout          "java.awt.GridLayout"
+                    'Graphics            "java.awt.Graphics"
+                    'Graphics2D          "java.awt.Graphics2D"
+                    'Toolkit             "java.awt.Toolkit"
+                    'RoundRectangle2D    "java.awt.geom.RoundRectangle2D"
+                    'RoundRectangle2D$Double "java.awt.geom.RoundRectangle2D$Double"
+                    'RoundRectangle2D$Float "java.awt.geom.RoundRectangle2D$Float"
+                    'Rectangle2D         "java.awt.geom.Rectangle2D"
+                    'Rectangle2D$Double  "java.awt.geom.Rectangle2D$Double"
+                    'Rectangle2D$Float   "java.awt.geom.Rectangle2D$Float"
+                    'InputStream         "java.io.InputStream"
+                    'FileInputStream     "java.io.FileInputStream"
+                    'StringReader        "java.io.StringReader"
+                    'Boolean             "java.lang.Boolean"
+                    'Short               "java.lang.Short"
+                    'Integer             "java.lang.Integer"
+                    'Long                "java.lang.Long"
+                    'Float               "java.lang.Float"
+                    'Double              "java.lang.Double"
+                    'Character           "java.lang.Character"
+                    'Math                "java.lang.Math"
+                    'Object              "java.lang.Object"
+                    'HashSet             "java.util.HashSet"
+                    'System              "java.lang.System"
+                    'Font                "java.awt.Font"
+                    'Runtime             "java.lang.Runtime"
+                    'BigInteger          "java.math.BigInteger"
+
+                    'Symbol     "Symbol"
+                    'Cons       "Cons"
+                    'Procedure  "Procedure"
+                    'LispSubr   "LispSubr"
+                    'LispStream "LispStream"
+                    'LispException "LispException")
+
+;; GURBER
+(defun make-my-array lst
+  (let* ((len (length lst))
+         (idx 0)
+         (ar (send Array 'newInstance Object len)))
+    (dolist (l lst)
+      (send Array 'set ar idx l)
+      (inc idx))
+    ar))
+
+(defun java-array->list (ary)
+  (let ((roop (lambda (cnt acc)
+                (if (< cnt 0)
+                    acc
+                    (roop (1- cnt) (cons (send Array 'get ary cnt) acc))))))
+    (roop (1- (send Array 'getLength ary)) nil)))
+
+(defun print-methods (klas)
+  (dolist (i (mapcar (lambda (x) (send x 'toString))
+                     (java-array->list (send klas 'getMethods))))
+    (write-string i)
+    (terpri)))
+
+(defun print-fields (klas)
+  (dolist (i (mapcar (lambda (x) (send x 'toString))
+                     (java-array->list (send klas 'getFields))))
+    (write-string i)
+    (terpri)))
+
+                  
+;; (defun instance-of (a b)
+;;   (send  'isInstance b))
+
+(defun field-value (obj field)
+  (let ((field (if (send Symbol 'isInstance field)
+                   (prin1-to-string field)
+                   field))
+        (klas (if (send Class 'isInstance obj)
+                  obj
+                  (send obj 'getClass))))
+    (send (send klas 'getField field) 'get obj)))
+
+;; Useful when you need to call several methods for side-effects on a single object,
+;; like when using swing for example.
+(defmacro with-object (a)
+  (let ((obj-sym (gensym)))
+    (subst-symbols '(let ((<obj-sym> <obj>))
+                      (progn . <body>)
+                      <obj-sym>)
+                   '<obj-sym> obj-sym
+                   '<obj>     (cadr a)
+                   '<body>    (mapcar (lambda (x)
+                                        (subst-symbols '(send <obj-sym> '<method> . <args>)
+                                                       '<obj-sym> obj-sym
+                                                       '<method>  (car x)
+                                                       '<args>    (cdr x)))
+                                      (cddr a)))))
+                               
+
+;; Java-adapted try-catch thingamajing. uses the low-level %try
+;; Here we see when substitution-based macro-building is inferior to backquoting (which ljsp lacks at the moment)
+(defmacro try-catch-finally (a)
+  (let* ((rst (cdr a))
+         (catch-forms (nlet collect ((lst rst) (acc nil))
+                            (let ((x (member 'catch lst)))
+                              (if (end? x)
+                                  (reverse! acc)
+                                  (collect (cdddr x) (cons (cons (second x) (third x)) acc))))))
+         (exception-sym (gensym)))
+    (print 'bajs)
+    (subst-symbols '(%try (lambda () <try-form>)
+                          (lambda (<exception-sym>) (cond . <cond-body>)))
+                   '<exception-sym> exception-sym
+                   '<try-form>      (second (member 'try rst))
+                   '<cond-body>     (append
+                                     (mapcar (lambda (_)
+                                               (subst-symbols '((send <exception-type> 'isInstance <exception-sym>) (let ((<exception-name> <exception-sym>))
+                                                                                                                      <handler-form>))
+                                                              '<exception-type> (caar _)
+                                                              '<exception-sym>  exception-sym
+                                                              '<exception-name> (cadar _)
+                                                              '<handler-form>   (cadr _)))
+                                             catch-forms)
+                                     (list (subst-symbols '(t <finally-form> (throw <exception-sym>))
+                                                          '<finally-form> (second (member 'finally rst))
+                                                          '<exception-sym> exception-sym))))))
+
+    
+;; ;; Wants to be replaced
+;; (defun read-from-string (str)
+;;   (let ((make-string-reader (send Array 'get (send StringReader 'getConstructors) 0))
+;;         (make-lisp-stream (send Array 'get (send LispStream 'getConstructors) 1)))
+;;     (read (send make-lisp-stream 'newInstance (make-my-array (send make-string-reader 'newInstance (make-my-array str)) nil)))))
+
+
+
+
+
+;; ;; MEGAUGLY
+;; (let ((tmp (send ArrayList 'newInstance)))
+;;   (setq java-true (send tmp 'add 23))
+;;   (setq java-false (send tmp 'contains 22)))
+
+;; Some playing around
+(setq fib-memo-arraylist (send ArrayList 'newInstance))
+(let ((add (fib-memo-arraylist 'add)))
+  (add 0)
+  (add 1)
+  (dotimes (i 3000) (add -1)))
+(defun fib-memo-java (n)
+  (let ((tjo (send fib-memo-arraylist 'get n)))
+    (if (/= tjo -1)
+        tjo
+        (let ((result (+ (fib-memo-java (- n 1)) (fib-memo-java (- n 2)))))
+          (send fib-memo-arraylist 'set n result)
+          result))))
+
+(defun hello-warld ()
+  (setq frame (send JFrame 'newInstance)
+        label (send JLabel 'newInstance))
+  (send frame 'setTitle "HelloWorldSwing")
+  (send label 'setText "Hello World")
+  (send (send frame 'getContentPane) 'add label)
+  (send frame 'pack)
+  (send frame 'setVisible t))
+
+;; (setq newline "
+;; ")
+;; (setq char-newline #\
+;;       )      
+
+(defun start-listener ()
+  (setq listener (list 'frame              (send JFrame 'newInstance)
+                       'text-field         (send JTextField 'newInstance)
+                       'text-area          (send JTextArea 'newInstance)
+                       'output-scroll-pane (send JScrollPane 'newInstance)
+                       'list-scroll-pane   (send JScrollPane 'newInstance)
+                       'symbol-list        (send JList 'newInstance)
+                       'panel              (send Box 'createHorizontalBox) ;(send JPanel 'newInstance)
+                       'right-box          (send Box 'createVerticalBox)
+                       'history            nil
+                       'history-tmp        nil))
+  (with-plist (frame
+               text-field
+               text-area
+               output-scroll-pane
+               list-scroll-pane
+               symbol-list
+               panel
+               right-box) listener
+    (with-object text-field
+      (setText "Write stuffs here for great justice!")
+      (setColumns 24)
+      (addActionListener
+       (make-listener (lambda (e)
+                        (send text-area 'append
+                              (with-output-to-string (*standard-output*)
+                                (let* ((str         (send e 'getActionCommand))
+                                       (what-i-read (read-from-string str)))
+                                  (write-char #\>) (write-char #\>) (write-char #\ ) ;FIXME: GARH
+                                  (print what-i-read)
+                                  (print (eval what-i-read))
+                                  (putf listener 'history (cons str (getf listener 'history))))))
+                        (send text-field 'setText "")
+                        (listener-update-symbol-list))))
+      (addKeyListener
+       (make-listener (lambda (e)
+                        (when (= (send e 'getID) (field-value KeyEvent 'KEY_PRESSED))
+                          (unless (getf listener 'history-tmp) (putf listener 'history-tmp (copy-list (getf listener 'history))))
+                          (cond ((= (send e 'getKeyCode) (field-value KeyEvent 'VK_UP))
+                                 (send text-field 'setText (car (getf listener 'history-tmp)))
+                                 (putf listener 'history-tmp (rotate-left (getf listener 'history-tmp))))
+                                ((= (send e 'getKeyCode) (field-value KeyEvent 'VK_DOWN))
+                                 (send text-field 'setText (car (getf listener 'history-tmp)))
+                                 (putf listener 'history-tmp (rotate-right (getf listener 'history-tmp))))
+                                (t (putf listener 'history-tmp nil))))))))
+    (with-object text-area
+      (setRows 24)
+      (setColumns 72)
+      (setEditable nil)
+      (setLineWrap t)
+      (setAutoscrolls t))
+    (send output-scroll-pane 'setViewportView text-area)
+    (with-object symbol-list
+      (setFixedCellWidth 128)
+      (addKeyListener
+       (make-listener (lambda (e)
+                        (and (= (send e 'getID)      (field-value KeyEvent 'KEY_PRESSED))
+                             (= (send e 'getKeyCode) (field-value KeyEvent 'VK_ENTER))
+                             (send text-field 'setText
+                                   (prin1-to-string (send symbol-list 'getSelectedValue))))))))
+    (listener-update-symbol-list)
+    (send list-scroll-pane 'setViewportView symbol-list)
+    (with-object right-box
+      (add output-scroll-pane)
+      (add text-field))
+    (with-object panel
+      (add list-scroll-pane)
+      (add right-box))
+    (with-object frame
+      (setTitle "Listener")
+      (setDefaultCloseOperation (field-value JFrame 'DISPOSE_ON_CLOSE))
+      (add panel)
+      (pack)
+      (setVisible t))))
+
+(defun get-procedure-list ()
+  (remove-if (lambda (x)
+               (cond  ((send LispSubr 'isInstance (symbol-value x)) nil)
+                      ((atom? (symbol-value x)) t)
+                      ((eq? (car (symbol-value x)) 'lambda) nil) 
+                      ((eq? (car (symbol-value x)) 'macro)  nil)
+                      (t t)))
+             (symbols)))
+
+(defun listener-update-symbol-list ()
+  (send (getf listener 'symbol-list) 'setListData
+        (apply make-my-array (get-procedure-list))))
+
+(provide 'java)

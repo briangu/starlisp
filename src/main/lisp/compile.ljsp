@@ -1,0 +1,735 @@
+;-*- Mode: Lisp -*-
+
+;;; IDEA: (doesn't really belong here?) Start having fexprs (or
+;;; similar) so you can be meaner in how you handle macros (as
+;;; statically as CL for instance).
+
+;;; Can you somehow coerce the JVM into thinking duck-typing is a good idea? 
+
+;; TODO: DONE-ish add argument to pretty much everything to keep track of tail-call or not
+;;       * Judicious finals everywhere (we don't subclass the generated classes after all)
+;;       * Perhaps move classname out of the environment plist?
+;;       * More correct-amount-of-args-checking and the likes
+;;       * Make all environtment be ONE environment and convey static/lexical/dynamic using the plist instead?!?!?
+;;       * instead of having the creepy %literal-vars% and %literal-init% type variables scan code ahead of
+;;         time to generate a table of constants? (we don't win much on this move except
+;;         having cleaner code with less side-effects
+
+
+(require 'java)
+
+;; Perhaps move this to stuff.ljsp due to it's bootstrappinessishness?
+(unless (running-compiled?)
+  (defmacro defvar (a)
+    (unless (symbol-value (cadr a))     ; unless already bound
+      (list 'setq (cadr a) (caddr a)))))
+
+
+;; FOR NOW
+(defvar cfib '(nlambda fib (n) (if (= n 0) 0 (if (= n 1) 1 (+ (fib (- n 1)) (fib (- n 2)))))))
+
+(defvar cfib-trec '(lambda (n)
+                     ((nlambda calc-fib (n a b)
+                        (if (= n 0)
+                            a
+                            (calc-fib (- n 1) b (+ a b))))
+                      n 0 1)))
+
+(defvar fcollatz '(nlambda collatz (n) (print n) (if (= n 1) nil (collatz (if (= (mod n 2) 0) (/ n 2) (+ 1 (* n 3)))))))
+
+;; differs semantically slightly from the mapcar1 in stuff.ljsp (aside from wierd binding-stuffs, it doesn't use end? for end of list)
+(defvar mopcor1 '(nlambda mapcar1 (fnx lstx) (if lstx (cons (fnx (car lstx)) (mapcar1 fnx (cdr lstx))) nil)))
+
+;; differs semantically slightly from the assq in stuff.ljsp (aside from wierd binding-stuffs, it doesn't use end? for end of list)
+;; left some crud in ((lambda nil nil)) (from macro expansion), for testing, in it but removed others that wouldn't work in static scoping...
+(defvar cassq '(nlambda assq (key alist) (if (eq? alist nil) ((lambda nil nil)) (if (eq? key (car (car alist))) (car alist) (assq key (cdr alist))))))
+
+(defvar quote-test (subst-symbols
+                    '(lambda (a)
+                      (cons a '(#\W (1231312312312312312312312312312313123 . 5343412914294967296) (<a> <b> <c>) b #(hej din fisk (1 2 3)) "potatismossa" . 12.4)))
+                    ;; since the current reader has no syntax for introducing NaN's we do this. the compiler needs to handle it
+                    ;; after all and maybe the reader supports some syntax for NaN in the future
+                    '<a> (/ 0.0 0.0)
+                    '<b> (/ 1.0 0.0)    ; same for pos inf
+                    '<c> (/ 1.0 -0.0)))  ; same for neg inf
+
+(defvar cfact '(nlambda fact (n acc) (if (= 0 n) acc (fact (- n 1) (* n acc)))))
+
+;; Blargh my parser is broken in many strange ways and crazy so let's
+;; have a crazy variable for this
+(defvar dblfnutt (prin1-to-string '|"|))
+
+(defvar nl "
+")
+
+(defvar *compiled-body* '())
+
+(defvar *dynamic-variables* '())
+
+(defvar *label-counter* 0)
+(defvar *funclabel-counter* 0)
+(defvar *static-var-counter* 0)
+
+;; These are dynmic variables locally overrided to contain
+;; initializing code, and the static variable definitions for all the
+;; literals, into their static variables, for the currently compiling
+;; class file. Defvarring them like this makes them be SPECIAL (or whatever)
+(defvar %literal-init% nil)
+(defvar %literal-vars% nil)
+
+;; local variables 5 and above are for static environment. 0 to 5 have
+;; special uses. With 0 always referring to the this variable. 3 being
+;; a temp variable and the others are for the time being undefined.
+(defvar +reserved-regs-split+ 5)
+
+(defun get-label ()
+  (concat "L" (inc *label-counter*)))
+
+(defun get-funclabel ()
+  (concat "FUN" (inc *funclabel-counter*)))
+
+(defun get-static-var-name ()
+  (concat "lit" (inc *static-var-counter*)))
+
+
+
+;;;; Functions implemented using java classes that perhaps should be
+;;;; made built-in to ease boot-strapping and portability
+
+;; For portabilitys sake consider makeing this a built in subr
+(defun concat strs
+  (let ((sb (send StringBuilder 'newInstance)))
+    (dolist (str strs)
+      (send sb 'append str))
+    (send sb 'toString)))
+
+;; Same: for portabilitys sake consider making this built in or similar
+(defun load-proc (name)
+  (let ((name (if (type? 'symbol name) (prin1-to-string name) name)))
+    (send (send Class 'forName name) 'newInstance)))
+
+(defun concat-nl strs
+  (apply concat (flatten (mapcar (lambda (x) (list x nl)) strs))))
+
+(defun NaN? (a)
+  (send Double 'isNaN a))
+
+(defun infinite? (a)
+  (send Double 'isInfinite a))
+
+;;;; End functions using java
+
+
+;;;; CODE WALKER FOR LEXICAL ANALYSIS
+;;;; Used to find free variables in lambdas (and macros) mainly 
+;; This here thing does NOT want code with macros in it (HINT:
+;; remember to expand macros way early) (just think about the
+;; confusion let would be, for instance). Also think about: local
+;; macros WTF?
+
+(defun analyze (a . rst)
+  (let ((local-variables (car rst)))
+    (uniq (sort-list (analyze-expr a local-variables) hash<) eq?)))
+    
+
+(defun analyze-expr (a local-variables)
+  (if (atom? a)
+      (if (and (type? 'symbol a)
+               (not (member a local-variables))
+               (not (member a *dynamic-variables*)))
+          (list a)
+          '())
+      (case (car a)
+        (quote '())          ; no variables can be captured in a quote
+        (lambda (analyze-lambda a local-variables)) ; macro?
+        (if (analyze-list a local-variables))       ; Treat if specially in future? (is there a point in closing over the VARIABLE if ?)
+        (otherwise (analyze-list a local-variables)))))
+
+(defun analyze-lambda (a local-variables)
+  (unless (eq? (car a) 'lambda)         ; macro?
+    (error "You ought to supply me with a lambda when you want to analyze free variables in a lambda."))
+  (letrec ((scan (lambda (lst acc)
+                   (cond ((null? lst) (reverse! acc))
+                         ((atom? lst) (reverse! (cons lst acc)))
+                         (t (scan (cdr lst) (cons (car lst) acc)))))))
+    (analyze-list (cddr a) (append (scan (cadr a) nil) local-variables))))
+
+(defun analyze-list (a local-variables)
+  (letrec ((roop (lambda (lst acc)
+                   (if (end? lst)
+                       acc
+                       (roop (cdr lst) (append acc (analyze-expr (car lst) local-variables)))))))
+    (roop a nil)))
+
+;; Remember to check if there are too many arguments as well in things like if and print
+
+(defun emit-if (a e tail)
+  (let ((condition (cadr a))
+        (true-expr (caddr a))
+        (false-expr (cadddr a))
+        (label (get-label))
+        (label-after (get-label)))
+    (concat ";; " a nl
+            (emit-expr condition e nil)
+            "ifnonnull " label " ; branches to the true-expr" nl
+            (emit-expr false-expr e tail)
+            "goto " label-after " ; Don't also run the true-expr like a fool" nl
+            label ":" nl
+            (emit-expr true-expr e tail)
+            label-after ":" nl
+            ";; endif" nl)))
+
+;;;; Used by emit-funcall to generate code for how to structure arguments before the actual call
+;;;; This particular version is when passing arguments in an array
+(defun emit-funargs (args e)
+  (letrec ((roop (lambda (lst e cntr asm)
+                   (if (end? lst)
+                       asm
+                       (roop (cdr lst)
+                             e
+                             (1+ cntr)
+                             (concat asm
+                                     "dup"                        nl
+                                     "ldc_w " cntr                nl
+                                     (emit-expr (car lst) e nil)
+                                     "aastore"                    nl))))))
+    (let ((len (length args)))
+      (if (zero? len)
+          (concat "aconst_null" nl) ; very slight optimization of the no-argument case
+          (concat "ldc_w " len           nl
+                  "anewarray LispObject" nl
+                  (roop args e 0 ""))))))
+
+
+;; Version for passing arguments on stack in regular order
+#;(defun emit-funargs (args e)
+  (if args
+      (apply concat (mapcar (lambda (x) (emit-expr x e nil)) args)))
+      "")
+
+;; This will need to do different things for a non-compiled function a
+;; compiled function a compiled or non-compiled macro according to
+;; their current bindings (we fearlessly ignore that for the
+;; dynamically scoped case our function bindings might change and
+;; such. This is less a problem in the lexically scoped case yet still
+;; a problem for some cases (which cases?))
+;; WHEN JSR-ing (or similar):
+;; Don't forget to reverse the arglist
+;; Don't forget to push local vars....
+;; TODO: Think up ways to store variables together with some sort of type data so we know when to do what funcall
+
+;; POSSIBLE OPTIMIZATION: Inline in a nice way when just a regular
+;; non-recursive lambda-thingy (like the case the let- or progn macro
+;; would generate (especially the latter one is trivial))
+(defun emit-funcall (a e tail)
+  (let ((fun (car a))
+        (args (cdr a)))
+    (if (and tail
+             (type? 'symbol fun)
+             (print (get-variable-property fun 'self e)))
+        (emit-self-recursive-tail-call args e)
+        (concat ";; " a                    nl
+                (emit-expr fun e nil)           ; puts the function itself on the stack
+                "checkcast Procedure"      nl
+                "; preparing args"         nl
+                (emit-funargs args e)
+                "; end preparing args"     nl
+                "invokevirtual Procedure.run([LLispObject;)LLispObject;" nl))))
+
+;; WRITTEN FOR STATIC ONLY
+;; TODO: rewrite when stuff changes...
+;; This currently assumes a certain layout of variables laid out by emit-lambda-body.
+;; Note how we just reuse the old state locations since a tail-call let's us discard the old state for this frame entirely
+;; However: Before we start setting the local variables we have pushed all the results to the stack.
+;; If we didn't all sorts of side-effect mayhem might occur for example for
+;; (nlambda foo (a b) (if (> a 100) a (foo (+ a 2) (* a b)))) a is used twice in the argument list
+(defun emit-self-recursive-tail-call (args e)
+  (letrec ((funargs-push (lambda (lst e asm)
+                           (if (end? lst)
+                               asm
+                               (funargs-push (cdr lst)
+                                             e
+                                             (concat asm
+                                                     (emit-expr (car lst) e nil))))))
+           (funargs-pop (lambda (cntr offset asm)
+                          (if (zero? cntr)
+                              asm
+                              (funargs-pop (1- cntr)
+                                           offset
+                                           (concat asm
+                                                   "astore " (+ (1- cntr) offset) nl))))))
+    (concat ";; self-recursive tail-call args: " args nl
+            (funargs-push args e "")
+            (funargs-pop (length args) +reserved-regs-split+ "")
+            "goto Lselftail" nl)))
+
+(defun emit-quote (a e)
+  (unless (and (eq? (car a) 'quote)
+               (= (length a) 2))
+    (error (concat "Something's wrong with your quote: " a)))
+  (unless (and (type? 'string %literal-init%)  ; compile-lambda does initialize these to "", 
+               (type? 'string %literal-vars%)) ; so they should always be strings when we end up here
+    (error (concat "Special variables %literal-vars%: " (prin1-to-string %literal-vars%)
+                   " and %literal-init%: " (prin1-to-string %literal-init%)
+                   " not properly initialized")))
+  (let ((static-var (get-static-var-name))
+        (classname  (getf e 'classname)))
+    (setq %literal-vars% (concat %literal-vars%
+                                 ".field private static final " static-var " LLispObject;" nl))
+    (setq %literal-init% (concat %literal-init%
+                                 (emit-obj (second a) e)
+                                 "putstatic " classname "/" static-var " LLispObject;"))
+    (concat "getstatic " classname "/" static-var " LLispObject;" nl)))
+
+(defun emit-java-double (a)
+  (cond ((NaN? a)
+         ;; KLUDGE: workaround using division by zero (resulting in NaN) since
+         ;; jasmin seems to have trouble, or at least is lacking any documention,
+         ;; how to load a NaN double as a constant
+         (concat ";; jasmin lacks all sort of documentation on how to push a NaN double. Division by zero works as a work-around." nl
+                 "dconst_0" nl
+                 "dconst_0" nl
+                 "ddiv"     nl))
+        ((and (infinite? a) (not (neg? a)))
+         ;; KLUDGE: same thing but for positive infinity
+         (concat ";; hackaround for positive infinity" nl
+                 "ldc2_w 1.0d" nl
+                 "dconst_0"    nl
+                 "ddiv"        nl))
+        ((and (infinite? a) (neg? a))
+         ;; KLUDGE: same thing but for negative infinity
+         (concat ";; hackaround for negative infinity" nl
+                 "ldc2_w -1.0d" nl
+                 "dconst_0"     nl
+                 "ddiv"         nl))
+        (t
+         ;; that d is important, otherwise we are loading a float (not double)
+         ;; constant and introducing rounding errors
+         (concat "ldc2_w " a "d" nl))))
+
+(defun emit-java-long (a)
+  (concat "ldc2_w " a nl))
+
+;; Emits code to regenerate an object as it is (quoted stuffs use
+;; this)
+;; TODO: * what about procedures and the like, while not having a
+;;         literal representation one might send crazy shit to the
+;;         compiler...?
+;;       * What about uninterned symbols? (Does it really make a difference?) Very tricky shit this :/
+(defun emit-obj (obj e)
+  (cond ((eq? obj nil) (emit-nil))
+        ((type? 'fixnum obj)
+         (concat "new LispFixnum" nl
+                 "dup"            nl
+                 (emit-java-long a)
+                 "invokenonvirtual LispFixnum.<init>(J)V" nl))
+        ((type? 'flonum obj)
+         (concat "new LispFlonum" nl
+                 "dup"            nl
+                 (emit-java-double obj)
+                 "invokenonvirtual LispFlonum.<init>(D)V" nl))
+        ((type? 'bignum obj)
+         (concat "ldc_w " dblfnutt obj dblfnutt nl
+                 "invokestatic LispBignum.parse(Ljava.lang.String;)LLispBignum;" nl))
+        ((type? 'string obj)
+         (concat "new LispString"                  nl
+                 "dup"                             nl
+                 "ldc_w " dblfnutt obj dblfnutt    nl
+                 "invokenonvirtual LispString.<init>(Ljava.lang.String;)V" nl))
+        ((type? 'array obj)
+         (concat "new LispArray"                   nl
+                 "dup"                             nl
+                 (nlet roop ((cntr (length obj))
+                             (asm (concat "ldc_w " (length obj)  nl
+                                          "anewarray LispObject" nl)))
+                   (if (zero? cntr)
+                       asm
+                       (roop (1- cntr)
+                             (concat asm
+                                     "dup"                                nl
+                                     "ldc_w " (1- cntr)                   nl
+                                     (emit-obj (aref obj (1- cntr)) e)
+                                     "aastore"                            nl))))
+                 "invokenonvirtual LispArray.<init>([LLispObject;)V" nl))
+        ((type? 'symbol obj)
+         (concat "ldc_w " dblfnutt obj dblfnutt nl
+                 "invokestatic Symbol.intern(Ljava.lang.String;)LSymbol;" nl))
+        ((type? 'char obj)
+         (concat "new LispChar"                  nl
+                 "dup"                           nl
+                 "bipush " (char->integer obj)   nl
+                 "invokenonvirtual LispChar.<init>(C)V" nl))
+        ((type? 'cons obj)
+         (concat "new Cons"                nl
+                 "dup"                     nl
+                 (emit-obj (car obj) e)
+                 (emit-obj (cdr obj) e)
+                 "invokenonvirtual Cons.<init>(LLispObject;LLispObject;)V" nl))
+        (t (error (concat "Couldn't match type for:" a)))))
+                 
+(defun emit-return-self (obj e)
+  (cond ((type? 'symbol obj) (emit-variable-reference obj e))
+        ((atom? obj)         (emit-obj obj e))
+        (t (error "Arghmewhats?"))))
+
+
+
+;; TODO: when/if removing multiple alists for different sorts of environments: REWRITE
+;; THIS IS REALLY A HUGE KLUDGE
+(defun get-variable-property (var property e)
+  (or (get-static-variable-property var property e)
+      (get-lexical-variable-property var property e)
+      (get-dynamic-variable-property var property e)))
+
+(defun get-static-variable-property (var property e)
+  (getf (cddr (assq var (getf e 'static-environment))) property))
+
+(defun get-lexical-variable-property (var property e)
+  (getf (cddr (assq var (getf e 'dynamic-environment))) property))
+
+(defun get-dynamic-variable-property (var property e)
+  (getf (cddr (assq var (getf e 'lexical-environment))) property))
+      
+
+;;;; Variable lists look like ((a <storage-location> . <extra-properties-plist>) (b ...) ...)
+;;;; e.g ((a 1) (fib 0 self t))
+(defun get-static-variable (var e)
+  (let ((static-environment (getf e 'static-environment)))
+    (cadr (assq var static-environment))))
+
+(defun get-lexical-variable (var e)
+  (let ((lexical-environment (getf e 'lexical-environment)))
+    (cadr (assq var lexical-environment))))
+
+(defun get-dynamic-variable (var e)
+  (let ((dynamic-environment (getf e 'dynamic-environment)))
+    (cadr (assq var dynamic-environment))))
+
+(defun emit-variable-reference (a e)
+  (let ((static-var-place  (get-static-variable a e))
+        (lexical-var-place (get-lexical-variable a e))
+        (dynamic-var-place (get-dynamic-variable a e)))
+    (cond (static-var-place (concat "aload " static-var-place nl))
+          (lexical-var-place (concat "nolexicalyet" nl))
+          (dynamic-var-place (concat "nodynamicyet" nl))
+          (t (error (concat "Variable: " a " doesn't seem to exist anywhere."))))))
+
+(defun emit-arithmetic (a e)
+  (unless (= (length a) 3)
+    (error (concat "You can't arithmetic with wrong amount of args: " a)))
+  (concat (emit-expr (second a) e nil)
+          "checkcast LispNumber" nl
+          (emit-expr (third  a) e nil)
+          "checkcast LispNumber" nl
+          "invokevirtual LispNumber."
+          (case (car a) (+ "add") (- "sub") (* "mul") (/ "div"))
+          "(LLispNumber;)LLispNumber;" nl))
+
+(defun emit-integer-binop (a e)
+  (unless (= (length a) 3)
+    (error (concat "You can't integer-binop with wrong amount of args: " a)))
+  (concat (emit-expr (second a) e nil)
+          "checkcast LispInteger" nl
+          (emit-expr (third  a) e nil)
+          "checkcast LispInteger" nl
+          "invokevirtual LispInteger."
+          (case (car a) (mod "mod") (ash "ash"))
+          "(LLispInteger;)LLispInteger;" nl))
+
+
+;; Used, internalish, to emit dereferencing the variable t (currently special hardcoded, put in own function for modularity
+(defun emit-t (e)
+  (let ((classname (getf e 'classname)))
+    (concat "getstatic " classname "/t LLispObject;" nl))) ; TODO: in the future try to emit a variable reference to t here instead of this hardcoded mishmash
+
+;; Used to emit the sequence to convert a java boolean to a more lispish boolean. Used in mostly "internalish" ways.
+(defun emit-boolean-to-lisp (e)
+  (let ((label (get-label))
+        (label-after (get-label)))
+    (concat "ifeq " label nl
+            ;; (emit-return-self 123 nil)    ; TODO: change me to emit t later
+            (emit-t e)
+            "goto " label-after nl
+            label ":"           nl
+            (emit-nil)
+            label-after ":"     nl)))
+  
+(defun emit-= (a e)
+  (unless (= (length a) 3)
+    (error (concat "You can't = with wrong amount of args: " a)))
+  (concat (emit-expr (second a) e nil)
+          ;; "checkcast LispNumber" nl
+          (emit-expr (third a)  e nil)
+          ;; "checkcast LispNumber" nl
+          "invokevirtual java/lang/Object.equals(Ljava/lang/Object;)Z" nl
+          (emit-boolean-to-lisp e)))
+
+(defun emit-neg? (a e)
+  (unless (= (length a) 2)
+    (error (concat "You can't neg? with wrong amount of args: " a)))
+  (concat (emit-expr (second a) e nil)
+          "checkcast LispNumber"             nl
+          "invokevirtual LispNumber.negP()Z" nl
+          (emit-boolean-to-lisp e)))
+
+(defun emit-eq? (a e)
+  (unless (= (length a) 3)
+    (error (concat "You can't eq? with wrong amount of args: " a)))
+  (let ((label-ne (get-label))
+        (label-after (get-label)))
+    (concat (emit-expr (second a) e nil)
+            (emit-expr (third a)  e nil)
+            "if_acmpne " label-ne    nl
+            (emit-t e)
+            "goto "      label-after nl
+            label-ne ":"             nl
+            "aconst_null"            nl
+            label-after ":"          nl)))
+
+(defun emit-eql? (a e)
+  (error "eql? not implemented"))
+
+;; TODO: * two-argument version of print
+;;       * implement without temp variable if possible. Having
+;;         temp-variables might grow trickier when some method
+;;         implementations do away with the need to (always)
+;;         deconstruct an array
+(defun emit-print (a e)
+  (let ((label-nil   (get-label))
+        (label-after (get-label)))
+    (concat ";; " a                                                          nl
+            "getstatic java/lang/System/out Ljava/io/PrintStream;"           nl
+            (emit-expr (cadr a) e nil)
+            "dup"                                                            nl
+            "astore_2 ; store in the temp variable"                          nl
+            "dup"                                                            nl
+            "ifnull " label-nil                                              nl
+            "invokevirtual java/lang/Object.toString()Ljava/lang/String;"    nl
+            "goto " label-after                                              nl
+            label-nil ":"                                                    nl
+            "pop"                                                            nl
+            "ldc_w " dblfnutt "nil" dblfnutt                                 nl
+            label-after ":"                                                  nl
+            "invokevirtual java/io/PrintStream.println(Ljava/lang/String;)V" nl
+            "aload_2 ; we return what we got"                                nl)))
+
+(defun emit-set (a e)
+  (error "set not implemented"))
+
+(defun emit-nil ()
+  (concat "aconst_null" nl))
+
+(defun emit-car-cdr (a e)
+  (unless (= (length a) 2)
+    (error "You can't " (car a) " with wrong amount of args: " a))
+  (let ((label-nil (get-label)))
+    (concat (emit-expr (cadr a) e nil)
+            "dup"                                    nl
+            "ifnull " label-nil                      nl
+            "checkcast Cons"                         nl
+            "getfield Cons/" (car a) " LLispObject;" nl
+            label-nil ":"                            nl)))
+
+(defun emit-cons (a e)
+  (unless (= (length a) 3)
+    (error "You can't cons with wrong amount of args: " a))
+  (concat "new Cons"                                                nl
+          "dup"                                                     nl 
+          (emit-expr (second a) e nil)
+          (emit-expr (third a)  e nil)
+          "invokenonvirtual Cons.<init>(LLispObject;LLispObject;)V" nl))
+    
+(defun emit-expr (a e tail)
+  (if (list? a)
+      (case (car a)
+        ;; To be able to pass these, where appropriate (e.g: not if), as arguments the bootstrap code needs to define functions that use these builtins. e.g: (defun + (a b) (+ a b))
+        ;; (running-compiled? (emit-return-self 1337 nil)) ; TODO: change me to emit t later
+        (running-compiled? (emit-t e)) 
+        (set      (emit-set a e))
+        (eq?      (emit-eq? a e))
+        (eql?     (emit-eql? a e))
+        ((or + - * /) (emit-arithmetic a e))
+        (=        (emit-= a e))
+        (neg?     (emit-neg? a e))
+        ((or mod ash) (emit-integer-binop a e))
+        ((or car cdr) (emit-car-cdr a e))
+        (cons         (emit-cons a e))
+        (if (emit-if a e tail))
+        (print (emit-print a e))
+        ((or lambda nlambda) (emit-lambda a e))
+        (quote (emit-quote a e)) 
+        (otherwise (if (car a)          ; need to be careful about nil....? (should this truly be here?... well it is due to the list? check (nil is a list))
+                       (emit-funcall a e tail)
+                       (emit-nil))))
+      (emit-return-self a e)))
+
+
+(defun emit-lambda (a e)
+  (let ((function-class-name (compile-lambda a
+                                             (list 'static-environment  nil
+                                                   'lexical-environment (getf e 'lexical-environment)
+                                                   'dynamic-environment (getf e 'dynamic-environment)))))
+    ;; TODO: save this in a private static final field in the class? (if
+    ;; possible of course since when I introduce closures there will be cases
+    ;; where it may no longer be possible to do it that way)
+    (concat "new " function-class-name                           nl
+            "dup"                                                nl
+            "invokenonvirtual " function-class-name ".<init>()V" nl)))
+            
+
+;; OLD CRAP COMMENT?
+;; TODO?: something else than compile-lambda should output whatever amounts to
+;; dereferencing a function after actually having compiled the function and
+;; stored it in an appropriate global var (otherwise we would get some strange
+;; form of inline call wherever a lambda is)
+
+(defun emit-classfile-prologue (classname)
+  (concat ".class " classname "
+.super Procedure
+
+.field private static final t LLispObject;
+" %literal-vars% "
+
+.method static <clinit>()V
+    .limit locals 255
+    .limit stack 255
+
+    ldc_w " dblfnutt "t" dblfnutt "
+    invokestatic Symbol.intern(Ljava/lang/String;)LSymbol;
+    putstatic " classname "/t LLispObject;
+    " %literal-init% "
+    return
+.end method
+
+.method public <init>()V
+    .limit stack 2
+    .limit locals 1
+
+    aload_0
+    ldc " dblfnutt classname dblfnutt "
+    invokenonvirtual Procedure.<init>(Ljava/lang/String;)V
+    return
+.end method
+
+.method public run([LLispObject;)LLispObject;
+.limit stack  255
+.limit locals 255
+"))
+
+(defun emit-classfile-epilogue (classname)
+  (concat ".end method" nl))
+
+;; Compile a lambda/nlambda in environment e. Store jasmin source in classname.j (if supplied, optional argument)
+(defun compile-lambda (a e . rst)
+  (unless (and (type? 'list a)
+               (or (eq? (car a) 'lambda)
+                   (eq? (car a) 'nlambda)))
+    (error (concat "Are you really sure you passed me a lambda: " a)))
+  (let* ((classname (if rst (car rst) (get-funclabel)))
+         (env (list* 'classname classname e))
+         (%literal-vars% "")
+         (%literal-init% "")
+         (body (case (car a)                            ; since we evaluate the body also for the side effects to %literal-vars% 
+                 (lambda  (emit-lambda-body  a env))    ; and %literal-init% we have to evaluate this before emit-classfile-prologue
+                 (nlambda (emit-nlambda-body a env)))))
+    (with-open-file (stream (concat classname ".j") out)
+      (write-string (concat (emit-classfile-prologue classname)
+                            body
+                            (emit-classfile-epilogue classname))
+                    stream))
+    ;; HERE: compile the file just emitted too
+    classname))
+
+(defun emit-progn (a e tail)            ; NOT TAIL RECURSIVE
+  (cond ((cdr a) (concat (emit-expr (car a) e nil)
+                         "pop" nl
+                         (emit-progn (cdr a) e tail)))
+        (a (emit-expr (car a) e tail))
+        (t "")))
+  
+;; (nlambda <name> (a b c) . <body>)
+(defun emit-nlambda-body (a e)
+  (emit-lambda-body (cons 'lambda (cddr a))
+                    e
+                    ;; we know ourselves by being register 0 which is "this" in Java.  this variable
+                    ;; has the self property set to the parameter-list of the function. emit-funcall
+                    ;; will thus know it can do self-tail-call-elimination and also how the
+                    ;; parameters are to be interpreted (when to construct a list out of some of
+                    ;; them etc. etc.)
+                    (acons (cadr a) (list 0 'self (third a)) nil)))
+
+(defun emit-lambda-body (a e . rst)
+  (letrec ((static-environment-augmentation (first rst)) ; Optional argument that augments the generated static environment if present
+           (args (cadr a))
+           (body (cddr a))
+           (args-roop (lambda (lst alist asm cntr offset) ; TODO: variable arity rest-parameter stuff
+                        (if lst
+                            (args-roop (cdr lst)
+                                       (acons (car lst) (list (+ cntr offset) 'static t) alist)
+                                       (concat asm
+                                               "aload_1"                 nl
+                                               "ldc_w " cntr             nl
+                                               "aaload"                  nl
+                                               "astore " (+ cntr offset) nl)
+                                       (1+ cntr)
+                                       offset)
+                            (cons asm alist))))
+           (args-result (args-roop args '() "" 0 +reserved-regs-split+)) ; +reserved-regs-split+ is the first register that is general-purposey enough
+           (asm (car args-result))
+           (alist (cdr args-result))
+           (new-e (list 'classname (getf e 'classname) 'static-environment (append alist static-environment-augmentation))))
+    (concat ";; " a nl
+            asm
+            "Lselftail:" nl              ; label used for self-tail-recursive purposes
+            (emit-progn body new-e t)    ; in a lambda the progn body is always a taily-waily
+            "areturn"      nl
+            ";; endlambda" nl))) 
+
+
+;; An emit lambda for when all arguments are passed to the method
+;; plain. Might be good if you want to kawa-style optimize when
+;; there's a smaller than N number of args to a function
+;; (defun emit-lambda (a e . rst)
+;;   (letrec ((static-environment-augmentation (car rst)) ; Optional argument that augments the generated static environment if present
+;;            (args (cadr a))
+;;            (body (cddr a))
+;;            (args-roop (lambda (lst alist cntr)
+;;                         (if lst
+;;                             (args-roop (cdr lst)
+;;                                        (acons (car lst) cntr alist)
+;;                                        (1+ cntr))
+;;                             alist)))
+;;            (new-e (list 'classname (getf e 'classname) 'static-environment
+;;                         (append (args-roop args '() 1) ; 0 is the very special "this" argument, we don't want to include it here
+;;                                 static-environment-augmentation))))
+;;     (concat ";; " a nl
+;;             (emit-progn body new-e t)    ; in a lambda the progn body is always a taily-waily
+;;             "areturn"      nl
+;;             ";; endlambda" nl)))
+
+;; TODO: lexical i guess
+;; Old emit lambda when i was preparing for JSR-based stuff (might come in handy again when you try your hand at TCO)
+;; (defun emit-lambda (a e . rst)
+;;   (letrec ((static-environment-augmentation (car rst)) ; Optional argument that augments the generated static environment if present
+;;            (args (cadr a))
+;;            (body (cddr a))
+;;            (args-roop (lambda (lst asm alist cntr)
+;;                         (if lst
+;;                             (args-roop (cdr lst)
+;;                                        (concat "astore " cntr nl asm)
+;;                                        (acons (car lst) cntr alist)
+;;                                        (1+ cntr))
+;;                             (cons asm alist))))
+;;            (args-result (args-roop args "" '() +reserved-regs-split+)) ; +reserved-regs-split+ is the first register that isn't reserved
+;;            (asm (car args-result))
+;;            (new-e (list 'classname (getf e 'classname) 'static-environment (append (cdr args-result) static-environment-augmentation))))
+;;     (concat ";; " a nl
+;;             "astore 255     ; store return address in variable 255" nl
+;;             asm                          ; the argsy stuff
+;;             (emit-progn body new-e t)    ; in a lambda the progn body is always a taily-waily
+;;             "ret 255"      nl
+;;             ";; endlambda" nl)))
+
+
+
+(provide 'compile)
