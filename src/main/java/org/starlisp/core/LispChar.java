@@ -1,6 +1,6 @@
 package org.starlisp.core;
 
-final class LispChar extends LispObject {
+public final class LispChar extends LispObject {
   public final char ch;
 
   public LispChar(char ch) {

@@ -7,7 +7,7 @@ import java.lang.reflect.Method;
 // Java-LJSP interface
 // I combined Method and Constructor, and what do I get? Monstructor! of course! (this helps
 // in treating cosntructors like methods)
-final class Monstructor {
+public final class Monstructor {
   private final Method method;
   private final Constructor ctor;
 

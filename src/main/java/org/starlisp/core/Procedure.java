@@ -1,6 +1,6 @@
 package org.starlisp.core;
 
-abstract class Procedure extends LispObject {
+public abstract class Procedure extends LispObject {
   public final String name;
   public final int minArgs, maxArgs;
 

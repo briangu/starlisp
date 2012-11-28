@@ -1,6 +1,6 @@
 package org.starlisp.core;
 
-public class Symbol extends LispObject {
+public class Symbol<T extends LispObject> extends LispObject {
   private static Cons symbols = null;
 
   public static Cons getSymbols() {
@@ -17,7 +17,7 @@ public class Symbol extends LispObject {
     else return findSymbol(str, (Cons) list.cdr);
   }
 
-  public LispObject value;                                // Value field, manipulated directly most of the time
+  public T value;                                // Value field, manipulated directly most of the time
   private String str;
   private boolean interned;
 

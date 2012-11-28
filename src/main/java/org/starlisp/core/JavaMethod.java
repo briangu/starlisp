@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-final class JavaMethod extends Procedure {
+public final class JavaMethod extends Procedure {
   // FIXME: ARRGGGHH I SEEM TO PREFER OBJECT OVER DOUBLE SOMEOFTHEMTIMES... is this bad? Is it instead maybe what we want?
   //        fix is probably in either accept (more probable) or argumentMoreSpecificThan
 

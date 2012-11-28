@@ -1,6 +1,6 @@
 package org.starlisp.core;
 
-final class LispString extends LispArray {
+public final class LispString extends LispArray {
   public LispObject aset(int idx, LispObject obj) {
     if (!(obj instanceof LispChar))
       throw new LispException(Starlisp.internalError, "Only Char may be in a string.");

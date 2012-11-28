@@ -1,6 +1,6 @@
 package org.starlisp.core;
 
-final class LispException extends RuntimeException {
+public final class LispException extends RuntimeException {
   public final Symbol tag;
 
   public LispException(Symbol tag) {

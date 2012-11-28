@@ -2,7 +2,7 @@ package org.starlisp.core;
 
 import java.math.BigInteger;
 
-final class LispFlonum extends LispNumber {
+public final class LispFlonum extends LispNumber {
   private double n;
 
   public static LispNumber parse(String str) {

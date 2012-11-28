@@ -1,6 +1,6 @@
 package org.starlisp.core;
 
-abstract class LispInteger extends LispNumber {
+public abstract class LispInteger extends LispNumber {
   public static LispInteger parse(String str) {
     return LispFixnum.parse(str);
   } // TODO: be smart choose proper subclass

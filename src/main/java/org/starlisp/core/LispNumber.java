@@ -3,7 +3,7 @@ package org.starlisp.core;
 import java.math.BigInteger;
 import java.util.regex.Pattern;
 
-abstract class LispNumber extends LispObject {
+public abstract class LispNumber extends LispObject {
   public static final Pattern REGEX = Pattern.compile("^[+-]?\\d*\\.?(?:\\d+e)?\\d+$"); // The regex to match them all (numbers)
 
   public static final boolean javaStringMatchesLispNumber(String str) {

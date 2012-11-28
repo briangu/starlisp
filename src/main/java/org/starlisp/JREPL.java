@@ -5,7 +5,7 @@ import java.io.IOException;
 import org.starlisp.core.LispStream;
 import org.starlisp.core.Starlisp;
 
-public class REPL {
+public class JREPL {
   public static void main(String args[]) {
 
     Starlisp.initEnvironment();

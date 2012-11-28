@@ -2,7 +2,7 @@ package org.starlisp.core;
 
 import java.util.Arrays;
 
-class LispArray extends LispObject {
+public class LispArray extends LispObject {
   protected final LispObject[] ar;
 
   public LispArray(int length) {

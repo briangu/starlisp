@@ -1,6 +1,6 @@
 package org.starlisp.core;
 
-abstract class LispSubr extends Procedure {             // FIXME: This class does nothing but modify toString, remove in cleanup later on?
+public abstract class LispSubr extends Procedure {             // FIXME: This class does nothing but modify toString, remove in cleanup later on?
 
   public LispSubr(String name) {
     super(name);

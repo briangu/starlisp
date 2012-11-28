@@ -32,9 +32,9 @@ import java.util.EventObject;
 
 public final class Starlisp {
   public static final Symbol t = intern("t");
-  public static final Symbol standardOutput = intern("*standard-output*");
-  public static final Symbol standardInput = intern("*standard-input*");
-  public static final Symbol standardError = intern("*standard-error*");
+  public static final Symbol<LispStream> standardOutput = intern("*standard-output*");
+  public static final Symbol<LispStream> standardInput = intern("*standard-input*");
+  public static final Symbol<LispStream> standardError = intern("*standard-error*");
   public static final Symbol lambda = intern("lambda");
   public static final Symbol quote = intern("quote");
   public static final Symbol _if = intern("if");

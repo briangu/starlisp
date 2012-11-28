@@ -46,7 +46,7 @@
                         <generateRepository>false</generateRepository>
                         <programs>
                             <program>
-                                <mainClass>org.starlisp.REPL</mainClass>
+                                <mainClass>org.starlisp.JREPL</mainClass>
                                 <name>main</name>
                             </program>
                         </programs>
@@ -60,7 +60,7 @@
             <configuration>
                 <archive>
                     <manifest>
-                        <mainClass>org.starlisp.REPL</mainClass>
+                        <mainClass>org.starlisp.JREPL</mainClass>
                     </manifest>
                 </archive>
                 <descriptorRefs>
