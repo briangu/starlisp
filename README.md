@@ -1,9 +1,12 @@
 starlisp
 ========
 
-a Common LISP with support for *Lisp 
+A Common LISP with support for *Lisp and other useful features.
 
-inspirted by 
+LISP on the jvm impl inspired by "A Lisp compiler for the JVM" ANTON KINDESTAM
+  http://www.csc.kth.se/utbildning/kth/kurser/DD143X/dkand12/Group2Mads/report/AntonKindestam.pdf
+
+Starlisp: Connection Machine *Lisp implementation
 
 building
 ========
