@@ -13,8 +13,8 @@ public class Symbol<T extends LispObject> extends LispObject {
 
   private static Symbol findSymbol(String str, Cons list) { // FIXME: Make a loop out of this recursion
     if (list == null) return null;
-    else if (str.equals(((Symbol) list.car).str)) return (Symbol) list.car;
-    else return findSymbol(str, (Cons) list.cdr);
+    else if (str.equals(((Symbol) list.car()).str)) return (Symbol) list.car();
+    else return findSymbol(str, (Cons) list.cdr());
   }
 
   public T value;                                // Value field, manipulated directly most of the time

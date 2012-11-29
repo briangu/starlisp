@@ -79,9 +79,9 @@ public final class Starlisp {
   private static final Cons evlis(Cons list) {
     Cons result, last;
     if (list == null) return null;
-    result = last = new Cons(evalHead(list.car), null);
-    for (Cons c = (Cons) list.cdr; c != null; c = (Cons) c.cdr)
-      last = (Cons) (last.cdr = new Cons(evalHead(c.car), null));
+    result = last = new Cons(evalHead(list.car()), null);
+    for (Cons c = (Cons) list.cdr(); c != null; c = (Cons) c.cdr())
+      last = (Cons) (last.setCdr(new Cons(evalHead(c.car()), null)));
     return result;
   }
 
@@ -89,8 +89,8 @@ public final class Starlisp {
   private static final LispObject[] evlisArray(Cons list) {
     LispObject[] res = new LispObject[(list == null) ? 0 : list.length()];
     int i = 0;
-    for (Cons c = list; c != null; c = (Cons) c.cdr)
-      res[i++] = evalHead(c.car);
+    for (Cons c = list; c != null; c = (Cons) c.cdr())
+      res[i++] = evalHead(c.car());
     return res;
   }
 
@@ -128,29 +128,29 @@ but hard to avoid when implementing a dynamically typed language in a statically
         return ((Symbol) obj).value;
       else if (obj instanceof Cons) {
         Cons list = (Cons) obj;
-        if (list.car == _if) {    // TODO: check if there is something after else-clause and explode if that is the case
-          LispObject res = evalHead(((Cons) list.cdr).car); // (eval-head (cadr list))
+        if (list.car() == _if) {    // TODO: check if there is something after else-clause and explode if that is the case
+          LispObject res = evalHead(((Cons) list.cdr()).car()); // (eval-head (cadr list))
           if (res != null) {
-            obj = ((Cons) ((Cons) list.cdr).cdr).car;
+            obj = ((Cons) ((Cons) list.cdr()).cdr()).car();
             continue;
           }             // (eval-tail (caddr list))
-          else if (((Cons) ((Cons) list.cdr).cdr).cdr != null) {                // (cddr list)
-            obj = ((Cons) ((Cons) ((Cons) list.cdr).cdr).cdr).car;
+          else if (((Cons) ((Cons) list.cdr()).cdr()).cdr() != null) {                // (cddr list)
+            obj = ((Cons) ((Cons) ((Cons) list.cdr()).cdr()).cdr()).car();
             continue;
           } // (eval-tail (cadddr list))
           else return null;
-        } else if (list.car == quote)
-          return ((Cons) list.cdr).car;            // (cadr list)
-        else if (list.car == lambda || list.car == macro)
+        } else if (list.car() == quote)
+          return ((Cons) list.cdr()).car();            // (cadr list)
+        else if (list.car() == lambda || list.car() == macro)
           return list;                            // Lambdas and macros are self-quoting (Here we would also bind environment if lexical scoping)
         else { // Just brace for it, apply function to arguments
-          LispObject first = evalHead(list.car);
+          LispObject first = evalHead(list.car());
           if (first instanceof Cons) {
             Cons f1rst = (Cons) first;           // Java's being stupid, not letting me reuse the identifier "first"
-            if (f1rst.car == lambda) {
-              LispObject lambdaVar = ((Cons) f1rst.cdr).car;  // (cadr f1rst)
-              Cons lambdaBody = (Cons) ((Cons) f1rst.cdr).cdr; // (cddr f1rst)
-              Cons argList = (Cons) list.cdr;              // (cdr list)
+            if (f1rst.car() == lambda) {
+              LispObject lambdaVar = ((Cons) f1rst.cdr()).car();  // (cadr f1rst)
+              Cons lambdaBody = (Cons) ((Cons) f1rst.cdr()).cdr(); // (cddr f1rst)
+              Cons argList = (Cons) list.cdr();              // (cdr list)
               if (lambdaVar != null) {                       // lambda expects variables, this is the hairy part
                 // When lambdaVar instanceof Symbol we are only interested in rest-param, thus no args is ok.
                 if (argList == null && lambdaVar instanceof Cons)
@@ -159,40 +159,40 @@ but hard to avoid when implementing a dynamically typed language in a statically
                 if (lambdaVar instanceof Symbol)   // null car of varlist means we _only_ want rest-parameter
                   bind((Symbol) lambdaVar, evalledArgs);
                 else
-                  for (Cons c = (Cons) lambdaVar; ; c = (Cons) c.cdr) {
-                    if (c.cdr == null) {
-                      if (evalledArgs.cdr != null)
+                  for (Cons c = (Cons) lambdaVar; ; c = (Cons) c.cdr()) {
+                    if (c.cdr() == null) {
+                      if (evalledArgs.cdr() != null)
                         throw new LispException(internalError, "Too many args: " + obj);
-                      bind((Symbol) c.car, evalledArgs.car);
+                      bind((Symbol) c.car(), evalledArgs.car());
                       break;
                     }
-                    if (!(c.cdr instanceof Cons)) { // rest-parameter
-                      bind((Symbol) c.car, evalledArgs.car);
-                      bind((Symbol) c.cdr, evalledArgs.cdr);
+                    if (!(c.cdr() instanceof Cons)) { // rest-parameter
+                      bind((Symbol) c.car(), evalledArgs.car());
+                      bind((Symbol) c.cdr(), evalledArgs.cdr());
                       break;
                     }
-                    bind((Symbol) c.car, evalledArgs.car);
-                    evalledArgs = (Cons) evalledArgs.cdr;
+                    bind((Symbol) c.car(), evalledArgs.car());
+                    evalledArgs = (Cons)evalledArgs.cdr();
                     if (evalledArgs == null)
                       throw new LispException(internalError, "Too few args: " + obj);
                   }
               } // Phew... hairy...
               if (lambdaBody == null)
                 return null;                                                        // I've no body
-              for (; lambdaBody.cdr != null; lambdaBody = (Cons) lambdaBody.cdr)
-                evalHead(lambdaBody.car); // Eval body sequentially, leave last form for TCO
-              obj = lambdaBody.car;
+              for (; lambdaBody.cdr() != null; lambdaBody = (Cons) lambdaBody.cdr())
+                evalHead(lambdaBody.car()); // Eval body sequentially, leave last form for TCO
+              obj = lambdaBody.car();
               continue;
-            } /* (eval-tail (car lambda-body)) */  /* you got all that? */ else if (f1rst.car == macro) { // KLUDGE: kinda strange implementation of macro, huh?
+            } /* (eval-tail (car lambda-body)) */  /* you got all that? */ else if (f1rst.car() == macro) { // KLUDGE: kinda strange implementation of macro, huh?
               // (eval-tail (eval-head `((lambda ,@(cdr f1rst)) ',list)))
               // (eval-tail (eval-head (list (cons 'lambda (cdr f1rst)) (list 'quote list)))
-              obj = evalHead(cons(cons(lambda, f1rst.cdr), cons(cons(quote, cons(list, null)), null)));
+              obj = evalHead(cons(cons(lambda, (Cons)f1rst.cdr()), cons(cons(quote, cons(list, null)), null)));
               continue;
             } else
               throw new LispException(internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString());
           } else if (first instanceof Procedure)
             // (apply first (evlis-array (cdr list)))
-            return ((Procedure) first).applyArgs(evlisArray((Cons) list.cdr));
+            return ((Procedure) first).applyArgs(evlisArray((Cons) list.cdr()));
           else
             throw new LispException(internalError, "internal error: " + toStringOrNull(obj));
         }
@@ -216,11 +216,11 @@ but hard to avoid when implementing a dynamically typed language in a statically
   }
 
   public static LispObject car(Cons list) {
-    return (list == null) ? null : list.car;
+    return (list == null) ? null : list.car();
   }
 
   public static LispObject cdr(Cons list) {
-    return (list == null) ? null : list.cdr;
+    return (list == null) ? null : list.cdr();
   }
 
   public static Symbol intern(String str) {
@@ -301,13 +301,13 @@ but hard to avoid when implementing a dynamically typed language in a statically
     };
     intern("rplaca").value = new LispSubr("rplaca", 2) {
       public LispObject apply(LispObject[] o) {
-        ((Cons) o[0]).car = o[1];
+        ((Cons) o[0]).setCar(o[1]);
         return o[0];
       }
     };
     intern("rplacd").value = new LispSubr("rplacd", 2) {
       public LispObject apply(LispObject[] o) {
-        ((Cons) o[0]).cdr = o[1];
+        ((Cons) o[0]).setCdr((Cons)o[1]);
         return o[0];
       }
     };
