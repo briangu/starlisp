@@ -55,7 +55,7 @@ public final class JavaObject extends Procedure {
           // if (m.getName().equals(sbl.getStr()) && !Modifier.isAbstract(m.getReturnType().getModifiers())) // say no to methods returning abstract types
           methodList.add(new Monstructor(m));
     if (methodList.isEmpty())
-      throw new LispException(Starlisp.internalError, "No such method: " + sbl.getStr() + ", " + toString());
+      throw new LispException(Starlisp.internalError(), "No such method: " + sbl.getStr() + ", " + toString());
     methodArray = methodList.toArray(new Monstructor[0]);    // Umm... Not pretty API here Java...
     methodMap.get(storeKlas).put(sbl, methodArray);          // Cache the results
     return new JavaMethod(methodArray, sbl.getStr(), obj);

@@ -156,7 +156,7 @@ public class LispStream extends LispObject {
 
   private Cons readQuote() throws IOException {
     this.readJavaChar();
-    return new Cons(Starlisp.quote, new Cons(this.read(), null));
+    return new Cons(Starlisp.quote(), new Cons(this.read(), null));
   }
 
   // TODO: "\n" and the likes

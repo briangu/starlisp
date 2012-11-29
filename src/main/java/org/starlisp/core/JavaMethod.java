@@ -130,7 +130,7 @@ public final class JavaMethod extends Procedure {
     if (list.size() == 1) return list.getFirst();
 
 
-    throw new LispException(Starlisp.internalError, "This should not happen!"); // Seriously, it shouldn't!
+    throw new LispException(Starlisp.internalError(), "This should not happen!"); // Seriously, it shouldn't!
   }
 
   // Conversion helpers, does the unboxing and boxing
@@ -164,7 +164,7 @@ public final class JavaMethod extends Procedure {
                                 (obj instanceof Character) ? new LispChar((Character) obj) :
                                     (obj instanceof BigInteger) ? new LispBignum((BigInteger) obj) :
                                         (obj instanceof String) ? new LispString((String) obj) :
-                                            (obj instanceof Boolean) ? (Boolean) obj == true ? Starlisp.t : null :
+                                            (obj instanceof Boolean) ? (Boolean) obj == true ? Starlisp.t() : null :
                                                 new JavaObject(obj);
   }
 
@@ -184,26 +184,26 @@ public final class JavaMethod extends Procedure {
       List<Class> argumentTypes = getArgumentTypes(objects);
       Class storeKlas = (obj instanceof Class) ? (Class) obj : obj.getClass(); // We need to use obj as key when it is an instance of Class
       argumentTypes.add(0, storeKlas);                                        // prepend the class to the list of argument types
-      Monstructor method = methodMap.get(name).get(argumentTypes);
+      Monstructor method = methodMap.get(name()).get(argumentTypes);
       if (method == null) {
         int m = matchMethod(objects);
         if (m == -1)
-          throw new LispException(Starlisp.internalError, "No matching method found for the args: " + Arrays.toString(objects));
+          throw new LispException(Starlisp.internalError(), "No matching method found for the args: " + Arrays.toString(objects));
         method = methods[m];
-        methodMap.get(name).put(argumentTypes, method);
+        methodMap.get(name()).put(argumentTypes, method);
       }
       return javaToLisp(method.invoke(obj, lispToJava(objects, method.getParameterTypes()))); // Wee...
     } catch (IllegalAccessException e) {
-      throw new LispException(Starlisp.internalError, e);
+      throw new LispException(Starlisp.internalError(), e);
     } catch (InvocationTargetException e) {
-      throw new LispException(Starlisp.internalError, e);
+      throw new LispException(Starlisp.internalError(), e);
     } catch (InstantiationException e) {
-      throw new LispException(Starlisp.internalError, e);
+      throw new LispException(Starlisp.internalError(), e);
     }
   }
 
   public JavaMethod(Monstructor[] methods, String name, Object obj) {
-    super(name);                                        // TODO: Send proper limits to super?
+    super(name, 0, Integer.MAX_VALUE); // TODO: Send proper limits to super?
     this.methods = methods;
     this.obj = obj;
     if (!methodMap.containsKey(name))
@@ -211,7 +211,7 @@ public final class JavaMethod extends Procedure {
   }
 
   public String toString() {
-    return "#<java-method " + name + " | " + obj + ">";
+    return "#<java-method " + name() + " | " + obj + ">";
   }
 
   public boolean equals(Object obj) {
