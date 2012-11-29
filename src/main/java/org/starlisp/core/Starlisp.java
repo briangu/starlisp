@@ -14,21 +14,12 @@ package org.starlisp.core;
 **       * Fix up equals for LispNumbers and more
 */
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
-import java.util.EventObject;
 
 public final class Starlisp {
   public static final Symbol t = intern("t");
@@ -483,81 +474,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
         return ((LispStream) o[0]).eof() ? t : null;
       }
     };
-    intern("make-listener").value = new LispSubr("make-listener", 1) {
-      public LispObject apply(final LispObject[] o) {
-        final class Listener implements ActionListener, KeyListener, MouseListener, WindowListener { // TODO: Implement more interfaces
 
-          private void handle(EventObject e) {
-            eval(cons(o[0], cons(new JavaObject(e), null)));
-          }
-
-          public void actionPerformed(ActionEvent e) {
-            handle(e);
-          }
-
-          public void keyPressed(KeyEvent e) {
-            handle(e);
-          }
-
-          public void keyReleased(KeyEvent e) {
-            handle(e);
-          }
-
-          public void keyTyped(KeyEvent e) {
-            handle(e);
-          }
-
-          public void mouseClicked(MouseEvent e) {
-            handle(e);
-          }
-
-          public void mousePressed(MouseEvent e) {
-            handle(e);
-          }
-
-          public void mouseReleased(MouseEvent e) {
-            handle(e);
-          }
-
-          public void mouseEntered(MouseEvent e) {
-            handle(e);
-          }
-
-          public void mouseExited(MouseEvent e) {
-            handle(e);
-          }
-
-          public void windowActivated(WindowEvent e) {
-            handle(e);
-          }
-
-          public void windowClosed(WindowEvent e) {
-            handle(e);
-          }
-
-          public void windowClosing(WindowEvent e) {
-            handle(e);
-          }
-
-          public void windowDeactivated(WindowEvent e) {
-            handle(e);
-          }
-
-          public void windowDeiconified(WindowEvent e) {
-            handle(e);
-          }
-
-          public void windowIconified(WindowEvent e) {
-            handle(e);
-          }
-
-          public void windowOpened(WindowEvent e) {
-            handle(e);
-          }
-        }
-        return new JavaObject(new Listener());
-      }
-    };
     intern("make-runnable").value = new LispSubr("make-runnable", 1) {
       public LispObject apply(final LispObject[] o) {
         return new JavaObject(new Runnable() {
@@ -663,38 +580,22 @@ but hard to avoid when implementing a dynamically typed language in a statically
     // an extension of the base language to implement at will.
     intern("type?").value =
         new LispSubr("type?", 2) {
-          Symbol number = intern("number")
-              ,
-              integer = intern("integer")
-              ,
-              fixnum = intern("fixnum")
-              ,
-              bignum = intern("bignum")
-              ,
-              flonum = intern("flonum")
-              ,
-              symbol = intern("symbol")
-              ,
-              cons = intern("cons")
-              ,
-              procedure = intern("procedure")
-              ,
-              subr = intern("subr")
-              ,
-              array = intern("array")
-              ,
-              string = intern("string")
-              ,
-              javaObject = intern("java-object")
-              ,
-              javaMethod = intern("java-method")
-              ,
-              exception = intern("exception")
-              ,
-              charmander = intern("char")
-              ,
-              stream = intern("stream")
-              ,
+          Symbol number = intern("number"),
+              integer = intern("integer"),
+              fixnum = intern("fixnum"),
+              bignum = intern("bignum"),
+              flonum = intern("flonum"),
+              symbol = intern("symbol"),
+              cons = intern("cons"),
+              procedure = intern("procedure"),
+              subr = intern("subr"),
+              array = intern("array"),
+              string = intern("string"),
+              javaObject = intern("java-object"),
+              javaMethod = intern("java-method"),
+              exception = intern("exception"),
+              charmander = intern("char"),
+              stream = intern("stream"),
               list = intern("list");
 
           public LispObject apply(LispObject[] o) {
