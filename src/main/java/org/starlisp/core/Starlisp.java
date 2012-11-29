@@ -204,7 +204,8 @@ but hard to avoid when implementing a dynamically typed language in a statically
   public static LispObject prin1(LispObject obj, LispStream stream) {
     LispStream s = (stream != null) ? stream : (LispStream) standardOutput.value;
     if (obj != null)
-      obj.printObject(s);                // TODO: rewrite this using toStringOrNull instead (infact maybe get rid of the entire .printObject thing)
+      // TODO: rewrite this using toStringOrNull instead (infact maybe get rid of the entire .printObject thing)
+      s.writeJavaString(obj.toString());
     else s.writeJavaString("nil");          // Due to the funnyness of null as nil
     // s.terpri();
     return obj;
