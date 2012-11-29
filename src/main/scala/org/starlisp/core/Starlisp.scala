@@ -65,7 +65,6 @@ object Starlisp {
       if (stack(i) eq sbl) return
       i -= 2
     }
-    // TODO: validate
     stack(stackSize) = oldValue
     stackSize += 1;
     stack(stackSize) = sbl
@@ -574,27 +573,44 @@ object Starlisp {
     }
     intern("type?").value = new LispSubr("type?", 2) {
       def apply(o: Array[LispObject]): LispObject = {
-        val woot: Boolean = if (o(0) eq number) o(1).isInstanceOf[LispNumber] else if (o(0) eq integer) o(1).isInstanceOf[LispInteger] else if (o(0) eq fixnum) o(1).isInstanceOf[LispFixnum] else if (o(0) eq bignum) o(1).isInstanceOf[LispBignum] else if (o(0) eq flonum) o(1).isInstanceOf[LispFlonum] else if (o(0) eq symbol) o(1).isInstanceOf[Symbol] else if (o(0) eq cons) o(1).isInstanceOf[Cons] else if (o(0) eq list) (o(1) == null || o(1).isInstanceOf[Cons]) else if (o(0) eq procedure) o(1).isInstanceOf[Procedure] else if (o(0) eq subr) o(1).isInstanceOf[LispSubr] else if (o(0) eq array) o(1).isInstanceOf[LispArray] else if (o(0) eq string) o(1).isInstanceOf[LispString] else if (o(0) eq javaObject) o(1).isInstanceOf[JavaObject] else if (o(0) eq javaMethod) o(1).isInstanceOf[JavaMethod] else if (o(0) eq charmander) o(1).isInstanceOf[LispChar] else if (o(0) eq stream) o(1).isInstanceOf[LispStream] else false
-        if (woot) t else null
+        val knownType =
+          if (o(0) eq number) o(1).isInstanceOf[LispNumber]
+          else if (o(0) eq integer) o(1).isInstanceOf[LispInteger]
+          else if (o(0) eq fixnum) o(1).isInstanceOf[LispFixnum]
+          else if (o(0) eq bignum) o(1).isInstanceOf[LispBignum]
+          else if (o(0) eq flonum) o(1).isInstanceOf[LispFlonum]
+          else if (o(0) eq symbol) o(1).isInstanceOf[Symbol]
+          else if (o(0) eq cons) o(1).isInstanceOf[Cons]
+          else if (o(0) eq list) (o(1) == null || o(1).isInstanceOf[Cons])
+          else if (o(0) eq procedure) o(1).isInstanceOf[Procedure]
+          else if (o(0) eq subr) o(1).isInstanceOf[LispSubr]
+          else if (o(0) eq array) o(1).isInstanceOf[LispArray]
+          else if (o(0) eq string) o(1).isInstanceOf[LispString]
+          else if (o(0) eq javaObject) o(1).isInstanceOf[JavaObject]
+          else if (o(0) eq javaMethod) o(1).isInstanceOf[JavaMethod]
+          else if (o(0) eq charmander) o(1).isInstanceOf[LispChar]
+          else if (o(0) eq stream) o(1).isInstanceOf[LispStream]
+          else false
+        if (knownType) t else null
       }
 
-      private[core] var number: Symbol = intern("number")
-      private[core] var integer: Symbol = intern("integer")
-      private[core] var fixnum: Symbol = intern("fixnum")
-      private[core] var bignum: Symbol = intern("bignum")
-      private[core] var flonum: Symbol = intern("flonum")
-      private[core] var symbol: Symbol = intern("symbol")
-      private[core] var cons: Symbol = intern("cons")
-      private[core] var procedure: Symbol = intern("procedure")
-      private[core] var subr: Symbol = intern("subr")
-      private[core] var array: Symbol = intern("array")
-      private[core] var string: Symbol = intern("string")
-      private[core] var javaObject: Symbol = intern("java-object")
-      private[core] var javaMethod: Symbol = intern("java-method")
-      private[core] var exception: Symbol = intern("exception")
-      private[core] var charmander: Symbol = intern("char")
-      private[core] var stream: Symbol = intern("stream")
-      private[core] var list: Symbol = intern("list")
+      private[core] val number: Symbol = intern("number")
+      private[core] val integer: Symbol = intern("integer")
+      private[core] val fixnum: Symbol = intern("fixnum")
+      private[core] val bignum: Symbol = intern("bignum")
+      private[core] val flonum: Symbol = intern("flonum")
+      private[core] val symbol: Symbol = intern("symbol")
+      private[core] val cons: Symbol = intern("cons")
+      private[core] val procedure: Symbol = intern("procedure")
+      private[core] val subr: Symbol = intern("subr")
+      private[core] val array: Symbol = intern("array")
+      private[core] val string: Symbol = intern("string")
+      private[core] val javaObject: Symbol = intern("java-object")
+      private[core] val javaMethod: Symbol = intern("java-method")
+      private[core] val exception: Symbol = intern("exception")
+      private[core] val charmander: Symbol = intern("char")
+      private[core] val stream: Symbol = intern("stream")
+      private[core] val list: Symbol = intern("list")
     }
   }
 }
