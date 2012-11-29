@@ -6,7 +6,7 @@ object REPL extends App {
     try {
       while(true) {
         Starlisp.standardOutput.value.writeJavaString("\n>>");
-        Starlisp.prin1(Starlisp.eval(Starlisp.read(null)), null);
+        println("\n\t" + Starlisp.eval(Starlisp.read(Starlisp.standardInput.value)))
       }
     } catch {
       case e: Exception => e.printStackTrace;

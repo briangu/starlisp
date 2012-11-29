@@ -1,3 +1,3 @@
 package org.starlisp.core
 
-class LispObject {}
+class LispObject extends Object {}

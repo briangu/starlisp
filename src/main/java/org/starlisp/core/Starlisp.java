@@ -192,9 +192,9 @@ but hard to avoid when implementing a dynamically typed language in a statically
               throw new LispException(internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString());
           } else if (first instanceof Procedure)
             // (apply first (evlis-array (cdr list)))
-            return ((Procedure) first).apply(evlisArray((Cons) list.cdr));
+            return ((Procedure) first).applyArgs(evlisArray((Cons) list.cdr));
           else
-            throw new LispException(internalError, "Dina fiskar är dåliga: " + toStringOrNull(obj));
+            throw new LispException(internalError, "internal error: " + toStringOrNull(obj));
         }
       } else
         return obj;
@@ -202,7 +202,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
   }
 
   public static LispObject prin1(LispObject obj, LispStream stream) {
-    LispStream s = (stream != null) ? stream : (LispStream) standardOutput.value;
+    LispStream s = (stream != null) ? stream : standardOutput.value;
     if (obj != null)
       // TODO: rewrite this using toStringOrNull instead (infact maybe get rid of the entire .printObject thing)
       s.writeJavaString(obj.toString());
@@ -228,15 +228,15 @@ but hard to avoid when implementing a dynamically typed language in a statically
   }
 
   public static LispObject read(LispStream stream) throws IOException {
-    return ((stream != null) ? stream : (LispStream) standardInput.value).read();
+    return ((stream != null) ? stream : standardInput.value).read();
   }
 
   public static LispChar readChar(LispStream stream) throws IOException {
-    return new LispChar(((stream != null) ? stream : (LispStream) standardInput.value).readJavaChar());
+    return new LispChar(((stream != null) ? stream : standardInput.value).readJavaChar());
   }
 
   public static LispChar writeChar(LispChar ch, LispStream stream) throws IOException {
-    (stream != null ? stream : (LispStream) standardOutput.value).writeJavaChar(ch.ch);
+    (stream != null ? stream : standardOutput.value).writeJavaChar(ch.ch);
     return ch;
   }
 
@@ -285,152 +285,152 @@ but hard to avoid when implementing a dynamically typed language in a statically
 
     // Here go all SUBRs YAY! Redundancy is redundant etc. Messy is messy etc.
     intern("cons").value = new LispSubr("cons", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return cons(o[0], o[1]);
       }
     };
     intern("car").value = new LispSubr("car", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return car((Cons) o[0]);
       }
     };
     intern("cdr").value = new LispSubr("cdr", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return cdr((Cons) o[0]);
       }
     };
     intern("rplaca").value = new LispSubr("rplaca", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         ((Cons) o[0]).car = o[1];
         return o[0];
       }
     };
     intern("rplacd").value = new LispSubr("rplacd", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         ((Cons) o[0]).cdr = o[1];
         return o[0];
       }
     };
     intern("prin1").value = new LispSubr("prin1", 1, 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return prin1(o[0], (o.length > 1) ? (LispStream) o[1] : null);
       }
     };
     intern("eq?").value = new LispSubr("eq?", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return eq(o[0], o[1]);
       }
     };
     intern("atom?").value = new LispSubr("atom?", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return atom(o[0]);
       }
     };
     intern("set").value = new LispSubr("set", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((Symbol) o[0]).value = o[1];
       }
     };
     intern("eval").value = new LispSubr("eval", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return eval(o[0]);
       }
     };
-    intern("symbols").value = new LispSubr("symbols", 0) {
-      public LispObject run(LispObject[] o) {
+    intern("symbols").value = new LispSubr("symbols") {
+      public LispObject apply(LispObject[] o) {
         return symbols();
       }
     };
     intern("symbol-value").value = new LispSubr("symbol-value", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return (o[0] == null) ? null : symbolValue((Symbol) o[0]);
       }
     };
-    intern("gensym").value = new LispSubr("gensym", 0) {
-      public LispObject run(LispObject[] o) {
+    intern("gensym").value = new LispSubr("gensym") {
+      public LispObject apply(LispObject[] o) {
         return gensym();
       }
     };
     intern("intern").value = new LispSubr("intern", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         if (o[0] instanceof LispString) return intern(((LispString) o[0]).toJavaString());
         if (o[0] instanceof Symbol) return ((Symbol) o[0]).intern();
         throw new LispException(internalError, "Bad argument");
       }
     };
     intern("+").value = new LispSubr("+", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispNumber) o[0]).add((LispNumber) o[1]);
       }
     };
     intern("-").value = new LispSubr("-", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispNumber) o[0]).sub((LispNumber) o[1]);
       }
     };
     intern("*").value = new LispSubr("*", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispNumber) o[0]).mul((LispNumber) o[1]);
       }
     };
     intern("/").value = new LispSubr("/", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispNumber) o[0]).div((LispNumber) o[1]);
       }
     };
     intern("mod").value = new LispSubr("mod", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispInteger) o[0]).mod((LispInteger) o[1]);
       }
     };
     intern("ash").value = new LispSubr("ash", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispInteger) o[0]).ash((LispInteger) o[1]);
       }
     };
     intern("neg?").value = new LispSubr("neg?", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispNumber) o[0]).negP() ? t : null;
       }
     };
     intern("eql?").value = new LispSubr("eql?", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return eql(o[0], o[1]);
       }
     };
     intern("=").value = new LispSubr("=", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispNumber) o[0]).equals((LispNumber) o[1]) ? t : null;
       }
     };
     intern("char=").value = new LispSubr("char=", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return (((LispChar) o[0]).ch == ((LispChar) o[1]).ch) ? t : null;
       }
     };
     intern("aref").value = new LispSubr("aref", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispArray) o[0]).aref(((LispInteger) o[1]).toJavaInt());
       }
     };
     intern("aset").value = new LispSubr("aset", 3) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispArray) o[0]).aset(((LispInteger) o[1]).toJavaInt(), o[2]);
       }
     };
     intern("exit").value = new LispSubr("exit", 0, 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         System.exit((o.length < 1) ? 0 : ((LispNumber) o[0]).toJavaInt());
         return null;
       }
     };
-    intern("get-time").value = new LispSubr("get-time", 0) {
-      public LispObject run(LispObject[] o) {
+    intern("get-time").value = new LispSubr("get-time") {
+      public LispObject apply(LispObject[] o) {
         return new LispFixnum(System.currentTimeMillis());
       }
     };
     intern("read-char").value = new LispSubr("read-char", 0, 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         try {
           return readChar((o.length > 0) ? (LispStream) o[0] : null);
         } catch (IOException e) {
@@ -439,7 +439,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("write-char").value = new LispSubr("write-char", 1, 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         try {
           return writeChar((LispChar) o[0], ((o.length > 1) ? (LispStream) o[1] : null));
         } catch (IOException e) {
@@ -448,7 +448,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("read").value = new LispSubr("read", 0, 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         try {
           return read((o.length > 0) ? (LispStream) o[0] : null);
         } catch (IOException e) {
@@ -457,7 +457,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("open").value = new LispSubr("open", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         try {
           if (o[1] == in)
             return new LispStream(new FileReader(((LispString) o[0]).toJavaString()), null);
@@ -470,7 +470,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("close").value = new LispSubr("close", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         try {
           return ((LispStream) o[0]).close() ? t : null;
         } catch (IOException e) {
@@ -479,12 +479,12 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("eof?").value = new LispSubr("eof?", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((LispStream) o[0]).eof() ? t : null;
       }
     };
     intern("make-listener").value = new LispSubr("make-listener", 1) {
-      public LispObject run(final LispObject[] o) {
+      public LispObject apply(final LispObject[] o) {
         final class Listener implements ActionListener, KeyListener, MouseListener, WindowListener { // TODO: Implement more interfaces
 
           private void handle(EventObject e) {
@@ -559,7 +559,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("make-runnable").value = new LispSubr("make-runnable", 1) {
-      public LispObject run(final LispObject[] o) {
+      public LispObject apply(final LispObject[] o) {
         return new JavaObject(new Runnable() {
           public void run() {
             eval(cons(o[0], null));
@@ -568,22 +568,22 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("make-string-input-stream").value = new LispSubr("make-string-input-stream", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return new LispStream(new StringReader(((LispString) o[0]).toJavaString()), null);
       }
     }; // NOTE: copies string
-    intern("make-string-output-stream").value = new LispSubr("make-string-output-stream", 0) {
-      public LispObject run(LispObject[] o) {
+    intern("make-string-output-stream").value = new LispSubr("make-string-output-stream") {
+      public LispObject apply(LispObject[] o) {
         return new StringOutputStream();
       }
     };
     intern("get-output-stream-string").value = new LispSubr("get-output-stream-string", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return new LispString(((StringOutputStream) o[0]).getOutputStreamString());
       }
     };
     intern("%try").value = new LispSubr("%try", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         try {
           return eval(cons(o[0], null));
         } catch (Exception e) {
@@ -592,7 +592,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("throw").value = new LispSubr("throw", 1, 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         if (o.length == 2) {
           if (o[1] instanceof LispString)
             throw new LispException((Symbol) o[0], ((LispString) o[1]).toJavaString());
@@ -606,7 +606,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("make-array").value = new LispSubr("make-array", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         if (o[0] instanceof Cons) return new LispArray((Cons) o[0]);
         else if (o[0] instanceof LispInteger)
           return new LispArray(((LispInteger) o[0]).toJavaInt());
@@ -614,44 +614,44 @@ but hard to avoid when implementing a dynamically typed language in a statically
       }
     };
     intern("make-string").value = new LispSubr("make-string", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return new LispString(((LispInteger) o[0]).toJavaInt(), (LispChar) o[1]);
       }
     };
 
     // Primitive due to the overloading on type, and the fact that I would need to export getting the length of a LispArray anyhow.
     intern("length").value = new LispSubr("length", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return new LispFixnum((o[0] == null) ? 0 :
             (o[0] instanceof Cons) ? ((Cons) o[0]).length() :
                 ((LispArray) o[0]).length());
       }
     };
     intern("equal?").value = new LispSubr("equal?", 2) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return ((o[0] == null) ? o[1] == null : o[0].equals(o[1])) ? t : null;
       }
     };
     intern("sxhash").value = new LispSubr("sxhash", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return new LispFixnum((o[0] == null) ? 0 : o[0].hashCode());
       }
     };
 
     // When called from compiled code will return true, but not here
-    intern("running-compiled?").value = new LispSubr("running-compiled?", 0) {
-      public LispObject run(LispObject[] o) {
+    intern("running-compiled?").value = new LispSubr("running-compiled?") {
+      public LispObject apply(LispObject[] o) {
         return null;
       }
     };
 
     intern("char->integer").value = new LispSubr("char->integer", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return new LispFixnum((int) ((LispChar) o[0]).ch);
       }
     };
     intern("integer->char").value = new LispSubr("integer->char", 1) {
-      public LispObject run(LispObject[] o) {
+      public LispObject apply(LispObject[] o) {
         return new LispChar((char) ((LispInteger) o[0]).toJavaInt());
       }
     };
@@ -697,7 +697,7 @@ but hard to avoid when implementing a dynamically typed language in a statically
               ,
               list = intern("list");
 
-          public LispObject run(LispObject[] o) {
+          public LispObject apply(LispObject[] o) {
             boolean woot = o[0] == number ? o[1] instanceof LispNumber :
                 o[0] == integer ? o[1] instanceof LispInteger :
                     o[0] == fixnum ? o[1] instanceof LispFixnum :

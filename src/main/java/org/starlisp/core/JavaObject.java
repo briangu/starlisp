@@ -25,7 +25,7 @@ public final class JavaObject extends Procedure {
   }
 
   /* Apply object to symbol generating a "closure", a.k.a. method. */
-  public JavaMethod run(LispObject[] o) {
+  public JavaMethod apply(LispObject[] o) {
     Symbol sbl = (Symbol) o[0];
     ArrayList<Monstructor> methodList = new ArrayList<Monstructor>();
     Monstructor[] methodArray;

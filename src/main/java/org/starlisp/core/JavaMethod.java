@@ -179,7 +179,7 @@ public final class JavaMethod extends Procedure {
   }
 
   // Apply method to objects and the closed-over this object
-  public LispObject run(LispObject[] objects) {
+  public LispObject apply(LispObject[] objects) {
     try {
       List<Class> argumentTypes = getArgumentTypes(objects);
       Class storeKlas = (obj instanceof Class) ? (Class) obj : obj.getClass(); // We need to use obj as key when it is an instance of Class

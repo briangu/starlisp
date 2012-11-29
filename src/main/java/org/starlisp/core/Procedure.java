@@ -22,13 +22,13 @@ public abstract class Procedure extends LispObject {
     this.maxArgs = maxArgs;
   }
 
-  public final LispObject apply(LispObject[] o) {
+  public final LispObject applyArgs(LispObject[] o) {
     if (o.length < minArgs)
       throw new LispException(Starlisp.internalError, "Too few args when calling procedure: " + toString());
     if (o.length > maxArgs)
       throw new LispException(Starlisp.internalError, "Too many args when calling procedure: " + toString());
-    return run(o);
+    return apply(o);
   }
 
-  public abstract LispObject run(LispObject[] objects);
+  public abstract LispObject apply(LispObject... objects);
 }
