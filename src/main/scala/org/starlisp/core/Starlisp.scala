@@ -114,7 +114,7 @@ object Starlisp {
   }
   intern("eq?").value = new LispSubr("eq?", 2) {
     def apply(o: Array[LispObject]): LispObject = {
-      if (o(0) == o(1)) Symbol.t else null // TODO: correct?
+      Starlisp.eq(o(0), o(1))
     }
   }
   intern("atom?").value = new LispSubr("atom?", 1) {
@@ -546,8 +546,9 @@ class Runtime {
             }
           } else if (first.isInstanceOf[Procedure]) {
             return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.cdr.asInstanceOf[Cell]))
+          } else {
+            throw new LispException(Symbol.internalError, "internal error: " + Starlisp.toStringOrNull(obj))
           }
-          else throw new LispException(Symbol.internalError, "internal error: " + Starlisp.toStringOrNull(obj))
         }
       } else {
         return obj
