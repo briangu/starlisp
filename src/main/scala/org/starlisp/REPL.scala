@@ -1,4 +1,6 @@
-package org.starlisp.core
+package org.starlisp
+
+import core.{Starlisp, LispStream, Symbol, Runtime}
 
 object REPL extends App {
   val runtime = new Runtime
