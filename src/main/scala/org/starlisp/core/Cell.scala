@@ -1,6 +1,6 @@
 package org.starlisp.core
 
-class Cons(var car: LispObject = null, var cdr: LispObject = null) extends LispObject {
+class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispObject {
 
   def setCar(car: LispObject) : LispObject = {
     this.car = car
@@ -13,7 +13,7 @@ class Cons(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   }
 
   private final def hashCode(obj: LispObject): Int = {
-    if ((obj == null)) 261835505 else if ((obj.isInstanceOf[Cons])) 1 + obj.hashCode else obj.hashCode
+    if ((obj == null)) 261835505 else if ((obj.isInstanceOf[Cell])) 1 + obj.hashCode else obj.hashCode
   }
 
   override def hashCode: Int = {
@@ -25,7 +25,7 @@ class Cons(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   }
 
   override def equals(obj: Any): Boolean = {
-    if ((obj.isInstanceOf[Cons])) equals((obj.asInstanceOf[Cons]).car, car) && equals((obj.asInstanceOf[Cons]).cdr, cdr) else false
+    if ((obj.isInstanceOf[Cell])) equals((obj.asInstanceOf[Cell]).car, car) && equals((obj.asInstanceOf[Cell]).cdr, cdr) else false
   }
 
   def length: Int = {
@@ -33,7 +33,7 @@ class Cons(var car: LispObject = null, var cdr: LispObject = null) extends LispO
     var c = this
     while (c != null) {
       i += 1
-      c = c.cdr.asInstanceOf[Cons] // TODO: what if not cons?
+      c = c.cdr.asInstanceOf[Cell] // TODO: what if not cons?
     }
     i
   }
@@ -43,7 +43,7 @@ class Cons(var car: LispObject = null, var cdr: LispObject = null) extends LispO
     var c = this
     (0 until arr.length).foreach { i =>
       arr(i) = c
-      c = c.cdr.asInstanceOf[Cons]
+      c = c.cdr.asInstanceOf[Cell]
     }
     arr
   }
@@ -51,18 +51,18 @@ class Cons(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   override def toString: String = {
     val sb: StringBuilder = new StringBuilder
     sb.append("(")
-    var list: Cons = this
+    var list: Cell = this
     var done = false
     while (!done) {
       if (list.cdr == null) {
         sb.append(Starlisp.toStringOrNull(list.car))
         done = true
-      } else if (!(list.cdr.isInstanceOf[Cons])) {
+      } else if (!(list.cdr.isInstanceOf[Cell])) {
         sb.append(Starlisp.toStringOrNull(list.car)).append(" . ").append(list.cdr.toString)
         done = true
       } else {
         sb.append(Starlisp.toStringOrNull(list.car)).append(" ")
-        list = list.cdr.asInstanceOf[Cons]
+        list = list.cdr.asInstanceOf[Cell]
       }
     }
     sb.append(")")

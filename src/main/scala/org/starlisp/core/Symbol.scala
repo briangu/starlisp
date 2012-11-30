@@ -3,10 +3,27 @@ package org.starlisp.core
 import collection.mutable.HashMap
 import java.io.UnsupportedEncodingException
 
+class SymbolContext {
+
+  val index = new HashMap[String, Symbol]
+
+  def getSymbols: Cell = {
+    var symbols: Cell = null
+    index.foreach{ case (name, sym) =>
+      symbols = new Cell(sym, symbols)
+    }
+    symbols
+  }
+
+  def findSymbol(str: String) = index.getOrElse(str, null)
+
+  def intern(str: String): Symbol = intern(new Symbol(str))
+  def intern(sym: Symbol): Symbol = Symbol.intern(this, sym)
+}
+
 object Symbol {
 
-  private var symbols: Cons = null
-  private val index = new HashMap[String, Symbol]
+  private val context = new SymbolContext
 
   val internalError = intern("internal-error")
   val t: Symbol = intern("t")
@@ -30,54 +47,32 @@ object Symbol {
     case e: UnsupportedEncodingException => ;
   }
 
-  def getSymbols: Cons = symbols
+  // TODO: actually clone
+  def cloneSymbols() : SymbolContext = context
 
-  def findSymbol(str: String) = index.getOrElse(str, null)
+  def intern(sym: Symbol) : Symbol = intern(context, sym)
+  def intern(str: String) : Symbol = intern(new Symbol(str))
 
-  def intern(str: String): Symbol = new Symbol(str).intern
-  def intern(sym: Symbol): Symbol = sym.intern
-
-/*
-  private def findSymbol(str: String, list: Cons): Symbol = {
-    if (list == null) {
-      null
-    } else if (str == (list.car.asInstanceOf[Symbol]).str) {
-      list.car.asInstanceOf[Symbol]
+  def intern(context: SymbolContext, sym: Symbol): Symbol = {
+    if (sym.interned) {
+      sym
     } else {
-      findSymbol(str, list.cdr.asInstanceOf[Cons])
+      val sbl = context.findSymbol(sym.name)
+      if (sbl == null) {
+        context.index(sym.name) = sym
+        sym.interned = true // TODO: can we just return sbl and throw away sym?
+        sym
+      } else {
+        sbl
+      }
     }
   }
-*/
 }
 
-class Symbol extends LispObject {
+class Symbol(var name: String = null) extends LispObject {
 
   var value: LispObject = null
-  private var str: String = null
   private var interned: Boolean = false
 
-  def this(str: String) {
-    this()
-    this.str = str
-    this.interned = false
-  }
-
-  private def intern: Symbol = {
-    if (this.interned) return this
-    val sbl = Symbol.findSymbol(this.str)
-    if (sbl == null) {
-      Symbol.symbols = new Cons(this, Symbol.symbols)
-      Symbol.index(str) = this
-      this.interned = true
-      this
-    } else {
-      sbl
-    }
-  }
-
-  def getStr: String = this.str
-
-  override def toString: String = {
-    if (this.interned) this.str else "#:" + this.str
-  }
+  override def toString: String = if (this.interned) this.name else "#:" + this.name
 }

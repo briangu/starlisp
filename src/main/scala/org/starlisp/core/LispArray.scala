@@ -6,7 +6,7 @@ class LispArray(protected val ar: Array[LispObject]) extends LispObject {
 
   def this(length: Int) = this(new Array[LispObject](length))
 
-  def this(list: Cons) = this(list.toArray)
+  def this(list: Cell) = this(list.toArray)
 
   def length: Int = ar.length
 

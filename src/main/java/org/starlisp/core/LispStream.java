@@ -112,8 +112,8 @@ public class LispStream extends LispObject {
   }
 
   /* Read in a list. Messy code ahead. */
-  private Cons readList() throws IOException {
-    Cons list, last;
+  private Cell readList() throws IOException {
+    Cell list, last;
     this.readJavaChar();                                // Discard one character (should be '(')
     this.skipWhiteSpaceAndComments();
     char ch = this.peekJavaChar();
@@ -122,7 +122,7 @@ public class LispStream extends LispObject {
       return null;
     }
     // First iteration of loop is wierd, and thus unrolled
-    list = last = new Cons(this.read(), null);
+    list = last = new Cell(this.read(), null);
     this.skipWhiteSpaceAndComments();
     ch = this.peekJavaChar();
     while (ch != ')') {
@@ -138,7 +138,7 @@ public class LispStream extends LispObject {
           throw new LispException(readerError, "You just might want to end the list with parentheses, even though you're a prick.");
         break;
       }
-      last = (Cons) last.setCdr(new Cons(this.read(), null));
+      last = (Cell) last.setCdr(new Cell(this.read(), null));
       this.skipWhiteSpaceAndComments();
       ch = this.peekJavaChar();
     }
@@ -154,9 +154,9 @@ public class LispStream extends LispObject {
     return sb.toString().equals("nil") ? null : Symbol$.MODULE$.intern(sb.toString());
   }
 
-  private Cons readQuote() throws IOException {
+  private Cell readQuote() throws IOException {
     this.readJavaChar();
-    return new Cons(Symbol.quote(), new Cons(this.read(), null));
+    return new Cell(Symbol.quote(), new Cell(this.read(), null));
   }
 
   // TODO: "\n" and the likes
