@@ -151,7 +151,7 @@ public class LispStream extends LispObject {
     char ch;
     this.readJavaChar();                                // Discard '|'
     while ((ch = this.readJavaChar()) != '|') sb.append(ch);
-    return sb.toString().equals("nil") ? null : new Symbol(sb.toString()).intern();
+    return sb.toString().equals("nil") ? null : Symbol$.MODULE$.intern(sb.toString());
   }
 
   private Cons readQuote() throws IOException {
@@ -220,7 +220,7 @@ public class LispStream extends LispObject {
         if (LispNumber.javaStringMatchesLispNumber(str))          // Is a number
           return LispNumber.parse(str);
         else // Is a symbol: Funnyness since nil not separated from java null (early bad decision)
-          return str.equals("nil") ? null : new Symbol(str).intern();
+          return str.equals("nil") ? null : Symbol$.MODULE$.intern(str);
     }
   }
 }

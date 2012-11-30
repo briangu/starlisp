@@ -34,8 +34,10 @@ object Symbol {
 
   def findSymbol(str: String) = index.getOrElse(str, null)
 
-  def intern(str: String): Symbol = (new Symbol(str)).intern
+  def intern(str: String): Symbol = new Symbol(str).intern
+  def intern(sym: Symbol): Symbol = sym.intern
 
+/*
   private def findSymbol(str: String, list: Cons): Symbol = {
     if (list == null) {
       null
@@ -45,6 +47,7 @@ object Symbol {
       findSymbol(str, list.cdr.asInstanceOf[Cons])
     }
   }
+*/
 }
 
 class Symbol extends LispObject {
@@ -59,7 +62,7 @@ class Symbol extends LispObject {
     this.interned = false
   }
 
-  def intern: Symbol = {
+  private def intern: Symbol = {
     if (this.interned) return this
     val sbl = Symbol.findSymbol(this.str)
     if (sbl == null) {
