@@ -68,12 +68,12 @@
                     'Runtime             "java.lang.Runtime"
                     'BigInteger          "java.math.BigInteger"
 
-                    'Symbol     "Symbol"
-                    'Cons       "Cons"
-                    'Procedure  "Procedure"
-                    'LispSubr   "LispSubr"
-                    'LispStream "LispStream"
-                    'LispException "LispException")
+                    'Symbol              "org.starlisp.core.Symbol"
+                    'Cell                "org.starlisp.core.Cell"
+                    'Procedure           "org.starlisp.core.Procedure"
+                    'LispSubr            "org.starlisp.core.LispSubr"
+                    'LispStream          "org.starlisp.core.LispStream"
+                    'LispException       "org.starlisp.core.LispException")
 
 ;; GURBER
 (defun make-my-array lst

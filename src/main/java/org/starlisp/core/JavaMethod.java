@@ -165,7 +165,7 @@ public final class JavaMethod extends Procedure {
                                 (obj instanceof Character) ? new LispChar((Character) obj) :
                                     (obj instanceof BigInteger) ? new LispBignum((BigInteger) obj) :
                                         (obj instanceof String) ? new LispString((String) obj) :
-                                            (obj instanceof Boolean) ? (Boolean) obj == true ? Symbol.t() : null :
+                                            (obj instanceof Boolean) ? (Boolean) obj == true ? Symbol$.MODULE$.t() : null :
                                                 new JavaObject(obj);
   }
 
