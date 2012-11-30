@@ -1,7 +1,6 @@
 package org.starlisp.core
 
 import java.util.Arrays
-import collection.mutable.ListBuffer
 
 class LispArray(protected val ar: Array[LispObject]) extends LispObject {
 

@@ -19,28 +19,16 @@ import java.io.FileWriter
 import java.io.IOException
 import java.io.PrintWriter
 import java.io.StringReader
-import java.io.UnsupportedEncodingException
 
 object Starlisp {
 
-  final val t: Symbol = intern("t")
-  final val standardOutput = intern("*standard-output*")
-  final val standardInput = intern("*standard-input*")
-  final val standardError = intern("*standard-error*")
-  final val lambda = intern("lambda")
-  final val quote = intern("quote")
-  final val _if= intern("if")
-  final val `macro`= intern("macro")
-  final val internalError= intern("internal-error")
-  private final val in= intern("in")
-  private final val out= intern("out")
-  private final val STACK_SIZE: Int = 32768 * 2
+  private val STACK_SIZE: Int = 32768 * 2
   private var stackSize: Int = 0
-  private val stack: Array[LispObject] = new Array[LispObject](STACK_SIZE)
+  private val stack = new Array[LispObject](STACK_SIZE)
   private var genSymCounter: Long = 0
 
   def toStringOrNull(obj: LispObject): String = {
-    if ((obj != null)) obj.toString else "nil"
+    if (obj != null) obj.toString else "nil"
   }
 
   private final def saveEnvironment {
@@ -120,33 +108,35 @@ object Starlisp {
   private final def evalTail(inobj: LispObject): LispObject = {
     var obj = inobj
     while (true) {
-      if (obj.isInstanceOf[Symbol]) return (obj.asInstanceOf[Symbol]).value
+      if (obj.isInstanceOf[Symbol]) {
+        return (obj.asInstanceOf[Symbol]).value
+      }
       else if (obj.isInstanceOf[Cons]) {
         val list: Cons = obj.asInstanceOf[Cons]
-        if (list.car eq _if) {
+        if (list.car eq Symbol._if) {
           val res: LispObject = evalHead((list.cdr.asInstanceOf[Cons]).car)
           if (res != null) {
             obj = ((list.cdr.asInstanceOf[Cons]).cdr.asInstanceOf[Cons]).car
-            //continue //todo: continue is not supported
-          }
-          else if (((list.cdr.asInstanceOf[Cons]).cdr.asInstanceOf[Cons]).cdr != null) {
+          } else if (((list.cdr.asInstanceOf[Cons]).cdr.asInstanceOf[Cons]).cdr != null) {
             obj = (((list.cdr.asInstanceOf[Cons]).cdr.asInstanceOf[Cons]).cdr.asInstanceOf[Cons]).car
-            //continue //todo: continue is not supported
+          } else {
+            return null
           }
-          else return null
+        } else if (list.car == Symbol.quote) {
+          return (list.cdr.asInstanceOf[Cons]).car
         }
-        else if (list.car == quote) return (list.cdr.asInstanceOf[Cons]).car
-        else if (list.car == lambda || list.car == `macro`) return list
-        else {
+        else if (list.car == Symbol.lambda || list.car == Symbol.`macro`) {
+          return list
+        } else {
           val first: LispObject = evalHead(list.car)
           if (first.isInstanceOf[Cons]) {
             val f1rst: Cons = first.asInstanceOf[Cons]
-            if (f1rst.car eq lambda) {
+            if (f1rst.car eq Symbol.lambda) {
               val lambdaVar: LispObject = (f1rst.cdr.asInstanceOf[Cons]).car
               var lambdaBody: Cons = (f1rst.cdr.asInstanceOf[Cons]).cdr.asInstanceOf[Cons]
               val argList: Cons = list.cdr.asInstanceOf[Cons]
               if (lambdaVar != null) {
-                if (argList == null && lambdaVar.isInstanceOf[Cons]) throw new LispException(internalError, "Too few args (zero in fact): " + obj)
+                if (argList == null && lambdaVar.isInstanceOf[Cons]) throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
                 var evalledArgs: Cons = evlis(argList)
                 if (lambdaVar.isInstanceOf[Symbol]) bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
                 else {
@@ -154,7 +144,7 @@ object Starlisp {
                   var done = false
                   while (!done) {
                     if (c.cdr == null) {
-                      if (evalledArgs.cdr != null) throw new LispException(internalError, "Too many args: " + obj)
+                      if (evalledArgs.cdr != null) throw new LispException(Symbol.internalError, "Too many args: " + obj)
                       bind(c.car.asInstanceOf[Symbol], evalledArgs.car)
                       done = true
                     } else if (!(c.cdr.isInstanceOf[Cons])) {
@@ -164,7 +154,7 @@ object Starlisp {
                     } else {
                       bind(c.car.asInstanceOf[Symbol], evalledArgs.car)
                       evalledArgs = evalledArgs.cdr.asInstanceOf[Cons]
-                      if (evalledArgs == null) throw new LispException(internalError, "Too few args: " + obj)
+                      if (evalledArgs == null) throw new LispException(Symbol.internalError, "Too few args: " + obj)
                       c = c.cdr.asInstanceOf[Cons]
                     }
                   }
@@ -176,25 +166,26 @@ object Starlisp {
                 lambdaBody = lambdaBody.cdr.asInstanceOf[Cons]
               }
               obj = lambdaBody.car
-              //continue //todo: continue is not supported
+            } else if (f1rst.car eq Symbol.`macro`) {
+              obj = evalHead(cons(cons(Symbol.lambda, f1rst.cdr.asInstanceOf[Cons]), cons(cons(Symbol.quote, cons(list, null)), null)))
             }
-            else if (f1rst.car eq `macro`) {
-              obj = evalHead(cons(cons(lambda, f1rst.cdr.asInstanceOf[Cons]), cons(cons(quote, cons(list, null)), null)))
-              //continue //todo: continue is not supported
+            else {
+              throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
             }
-            else throw new LispException(internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
+          } else if (first.isInstanceOf[Procedure]) {
+            return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.cdr.asInstanceOf[Cons]))
           }
-          else if (first.isInstanceOf[Procedure]) return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.cdr.asInstanceOf[Cons]))
-          else throw new LispException(internalError, "internal error: " + toStringOrNull(obj))
+          else throw new LispException(Symbol.internalError, "internal error: " + toStringOrNull(obj))
         }
+      } else {
+        return obj
       }
-      else return obj
     }
     obj // TODO: correct?
   }
 
   def prin1(obj: LispObject, stream: LispStream): LispObject = {
-    val s = if ((stream != null)) stream else standardOutput.value
+    val s = if ((stream != null)) stream else Symbol.standardOutput.value
     if (obj != null) {
       s.asInstanceOf[LispStream].writeJavaString(obj.toString)
     } else {
@@ -203,71 +194,60 @@ object Starlisp {
     obj
   }
 
-  def cons(car: LispObject, cdr: LispObject): Cons = {
+  private def cons(car: LispObject, cdr: LispObject): Cons = {
     new Cons(car, cdr)
   }
 
-  def car(list: Cons): LispObject = {
+  private def car(list: Cons): LispObject = {
     if ((list == null)) null else list.car
   }
 
-  def cdr(list: Cons): LispObject = {
+  private def cdr(list: Cons): LispObject = {
     if ((list == null)) null else list.cdr
   }
 
-  def intern(str: String): Symbol = {
-    Symbol.intern(str)
-  }
+  private def intern(str: String) = Symbol.intern(str)
 
   def read(stream: LispStream): LispObject = {
-    (if ((stream != null)) stream else standardInput.value).asInstanceOf[LispStream].read
+    (if ((stream != null)) stream else Symbol.standardInput.value).asInstanceOf[LispStream].read
   }
 
-  def readChar(stream: LispStream): LispChar = {
-    new LispChar((if ((stream != null)) stream else standardInput.value).asInstanceOf[LispStream].readJavaChar)
+  private def readChar(stream: LispStream): LispChar = {
+    new LispChar((if ((stream != null)) stream else Symbol.standardInput.value).asInstanceOf[LispStream].readJavaChar)
   }
 
-  def writeChar(ch: LispChar, stream: LispStream): LispChar = {
-    (if (stream != null) stream else standardOutput.value).asInstanceOf[LispStream].writeJavaChar(ch.ch)
+  private def writeChar(ch: LispChar, stream: LispStream): LispChar = {
+    (if (stream != null) stream else Symbol.standardOutput.value).asInstanceOf[LispStream].writeJavaChar(ch.ch)
     ch
   }
 
-  def eq(obj1: LispObject, obj2: LispObject): LispObject = {
-    if (obj1 eq obj2) t else null
+  private def eq(obj1: LispObject, obj2: LispObject): LispObject = {
+    if (obj1 eq obj2) Symbol.t else null
   }
 
-  def symbols: Cons = {
+  private def symbols: Cons = {
     Symbol.getSymbols
   }
 
-  def symbolValue(sbl: Symbol): LispObject = {
+  private def symbolValue(sbl: Symbol): LispObject = {
     sbl.value
   }
 
-  def atom(obj: LispObject): LispObject = {
-    if ((obj.isInstanceOf[Cons])) null else t
+  private def atom(obj: LispObject): LispObject = {
+    if ((obj.isInstanceOf[Cons])) null else Symbol.t
   }
 
-  def gensym: LispObject = {
+  private def gensym: LispObject = {
     val id = "G%d".format(genSymCounter)
     genSymCounter += 1
     new Symbol(id)
   }
 
-  def eql(a: LispObject, b: LispObject): LispObject = {
-    if ((a == null || b == null)) eq(a, b) else if (!a.getClass.isInstance(b)) null else if ((a.isInstanceOf[LispChar])) if (((a.asInstanceOf[LispChar]).ch == (a.asInstanceOf[LispChar]).ch)) t else null else if ((a.isInstanceOf[LispNumber])) (if (((a.asInstanceOf[LispNumber]) == b.asInstanceOf[LispNumber])) t else null) else eq(a, b)
+  private def eql(a: LispObject, b: LispObject): LispObject = {
+    if ((a == null || b == null)) eq(a, b) else if (!a.getClass.isInstance(b)) null else if ((a.isInstanceOf[LispChar])) if (((a.asInstanceOf[LispChar]).ch == (a.asInstanceOf[LispChar]).ch)) Symbol.t else null else if ((a.isInstanceOf[LispNumber])) (if (((a.asInstanceOf[LispNumber]) == b.asInstanceOf[LispNumber])) Symbol.t else null) else eq(a, b)
   }
 
   def initEnvironment {
-    t.value = t
-    try {
-      standardOutput.value = new LispStream(null, System.out)
-      standardInput.value = new LispStream(System.in, null)
-      standardError.value = new LispStream(null, System.err)
-    }
-    catch {
-      case e: UnsupportedEncodingException => ;
-    }
     intern("Class").value = new JavaObject(classOf[Class[_]])
     intern("cons").value = new LispSubr("cons", 2) {
       def apply(o: Array[LispObject]): LispObject = {
@@ -303,7 +283,7 @@ object Starlisp {
     }
     intern("eq?").value = new LispSubr("eq?", 2) {
       def apply(o: Array[LispObject]): LispObject = {
-        if (o(0) == o(1)) t else null // TODO: correct?
+        if (o(0) == o(1)) Symbol.t else null // TODO: correct?
       }
     }
     intern("atom?").value = new LispSubr("atom?", 1) {
@@ -341,7 +321,7 @@ object Starlisp {
       def apply(o: Array[LispObject]): LispObject = {
         if (o(0).isInstanceOf[LispString]) return intern((o(0).asInstanceOf[LispString]).toJavaString)
         if (o(0).isInstanceOf[Symbol]) return (o(0).asInstanceOf[Symbol]).intern
-        throw new LispException(internalError, "Bad argument")
+        throw new LispException(Symbol.internalError, "Bad argument")
       }
     }
     intern("+").value = new LispSubr("+", 2) {
@@ -376,7 +356,7 @@ object Starlisp {
     }
     intern("neg?").value = new LispSubr("neg?", 1) {
       def apply(o: Array[LispObject]): LispObject = {
-        if ((o(0).asInstanceOf[LispNumber]).negP) t else null
+        if ((o(0).asInstanceOf[LispNumber]).negP) Symbol.t else null
       }
     }
     intern("eql?").value = new LispSubr("eql?", 2) {
@@ -386,12 +366,12 @@ object Starlisp {
     }
     intern("=").value = new LispSubr("=", 2) {
       def apply(o: Array[LispObject]): LispObject = {
-        if (((o(0).asInstanceOf[LispNumber]) == o(1).asInstanceOf[LispNumber])) t else null
+        if (((o(0).asInstanceOf[LispNumber]) == o(1).asInstanceOf[LispNumber])) Symbol.t else null
       }
     }
     intern("char=").value = new LispSubr("char=", 2) {
       def apply(o: Array[LispObject]): LispObject = {
-        if (((o(0).asInstanceOf[LispChar]).ch == (o(1).asInstanceOf[LispChar]).ch)) t else null
+        if (((o(0).asInstanceOf[LispChar]).ch == (o(1).asInstanceOf[LispChar]).ch)) Symbol.t else null
       }
     }
     intern("aref").value = new LispSubr("aref", 2) {
@@ -422,7 +402,7 @@ object Starlisp {
         }
         catch {
           case e: IOException => {
-            throw new LispException(internalError, "An IOException just occured to me, " + this.toString)
+            throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
           }
         }
       }
@@ -434,7 +414,7 @@ object Starlisp {
         }
         catch {
           case e: IOException => {
-            throw new LispException(internalError, "An IOException just occured to me, " + this.toString)
+            throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
           }
         }
       }
@@ -446,7 +426,7 @@ object Starlisp {
         }
         catch {
           case e: IOException => {
-            throw new LispException(internalError, "An IOException just ocurred to me, " + this.toString)
+            throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
           }
         }
       }
@@ -454,13 +434,13 @@ object Starlisp {
     intern("open").value = new LispSubr("open", 2) {
       def apply(o: Array[LispObject]): LispObject = {
         try {
-          if (o(1) eq in) return new LispStream(new FileReader((o(0).asInstanceOf[LispString]).toJavaString), null)
-          if (o(1) eq out) return new LispStream(null, new PrintWriter(new FileWriter((o(0).asInstanceOf[LispString]).toJavaString)))
-          throw new LispException(internalError, "You confused me, you want a stream out, or in?")
+          if (o(1) eq Symbol.in) return new LispStream(new FileReader((o(0).asInstanceOf[LispString]).toJavaString), null)
+          if (o(1) eq Symbol.out) return new LispStream(null, new PrintWriter(new FileWriter((o(0).asInstanceOf[LispString]).toJavaString)))
+          throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
         }
         catch {
           case e: IOException => {
-            throw new LispException(internalError, e)
+            throw new LispException(Symbol.internalError, e)
           }
         }
       }
@@ -468,18 +448,18 @@ object Starlisp {
     intern("close").value = new LispSubr("close", 1) {
       def apply(o: Array[LispObject]): LispObject = {
         try {
-          if ((o(0).asInstanceOf[LispStream]).close) t else null
+          if ((o(0).asInstanceOf[LispStream]).close) Symbol.t else null
         }
         catch {
           case e: IOException => {
-            throw new LispException(internalError, "An IOException just ocurred to me, " + this.toString)
+            throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
           }
         }
       }
     }
     intern("eof?").value = new LispSubr("eof?", 1) {
       def apply(o: Array[LispObject]): LispObject = {
-        if ((o(0).asInstanceOf[LispStream]).eof) t else null
+        if ((o(0).asInstanceOf[LispStream]).eof) Symbol.t else null
       }
     }
     intern("make-runnable").value = new LispSubr("make-runnable", 1) {
@@ -523,7 +503,7 @@ object Starlisp {
         if (o.length == 2) {
           if (o(1).isInstanceOf[LispString]) throw new LispException(o(0).asInstanceOf[Symbol], (o(1).asInstanceOf[LispString]).toJavaString)
           else if (o(1).isInstanceOf[JavaObject]) throw new LispException(o(0).asInstanceOf[Symbol], (o(1).asInstanceOf[JavaObject]).getObj.asInstanceOf[Throwable])
-          else throw new LispException(internalError, "Throw threw a throw.")
+          else throw new LispException(Symbol.internalError, "Throw threw a throw.")
         }
         if (o(0).isInstanceOf[JavaObject] && (o(0).asInstanceOf[JavaObject]).getObj.isInstanceOf[LispException]) throw (o(0).asInstanceOf[JavaObject]).getObj.asInstanceOf[LispException]
         throw new LispException(o(0).asInstanceOf[Symbol])
@@ -533,7 +513,7 @@ object Starlisp {
       def apply(o: Array[LispObject]): LispObject = {
         if (o(0).isInstanceOf[Cons]) return new LispArray(o(0).asInstanceOf[Cons])
         else if (o(0).isInstanceOf[LispInteger]) return new LispArray((o(0).asInstanceOf[LispInteger]).toJavaInt)
-        else throw new LispException(internalError, "make-array wants an integer or a list")
+        else throw new LispException(Symbol.internalError, "make-array wants an integer or a list")
       }
     }
     intern("make-string").value = new LispSubr("make-string", 2) {
@@ -548,7 +528,7 @@ object Starlisp {
     }
     intern("equal?").value = new LispSubr("equal?", 2) {
       def apply(o: Array[LispObject]): LispObject = {
-        if ((if ((o(0) == null)) o(1) == null else (o(0) == o(1)))) t else null
+        if ((if ((o(0) == null)) o(1) == null else (o(0) == o(1)))) Symbol.t else null
       }
     }
     intern("sxhash").value = new LispSubr("sxhash", 1) {
@@ -591,7 +571,7 @@ object Starlisp {
           else if (o(0) eq charmander) o(1).isInstanceOf[LispChar]
           else if (o(0) eq stream) o(1).isInstanceOf[LispStream]
           else false
-        if (knownType) t else null
+        if (knownType) Symbol.t else null
       }
 
       private[core] val number: Symbol = intern("number")

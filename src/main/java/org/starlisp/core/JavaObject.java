@@ -11,7 +11,7 @@ public final class JavaObject extends Procedure {
   private final static Map<Class, Map<Symbol, Monstructor[]>> methodMap = new HashMap<Class, Map<Symbol, Monstructor[]>>();
   private final Class klas;
   private final Object obj;
-  private final static Symbol newInstance = Starlisp.intern("newInstance");
+  private final static Symbol newInstance = Symbol$.MODULE$.intern("newInstance");
 
   /* Wrap that object! */
   public JavaObject(Object obj) {
@@ -55,7 +55,7 @@ public final class JavaObject extends Procedure {
           // if (m.getName().equals(sbl.getStr()) && !Modifier.isAbstract(m.getReturnType().getModifiers())) // say no to methods returning abstract types
           methodList.add(new Monstructor(m));
     if (methodList.isEmpty())
-      throw new LispException(Starlisp.internalError(), "No such method: " + sbl.getStr() + ", " + toString());
+      throw new LispException(Symbol$.MODULE$.internalError(), "No such method: " + sbl.getStr() + ", " + toString());
     methodArray = methodList.toArray(new Monstructor[0]);    // Umm... Not pretty API here Java...
     methodMap.get(storeKlas).put(sbl, methodArray);          // Cache the results
     return new JavaMethod(methodArray, sbl.getStr(), obj);

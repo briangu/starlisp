@@ -16,8 +16,8 @@ import java.util.Stack;
 public class LispStream extends LispObject {
   public final Reader in;
   public final PrintWriter out;
-  private static final Symbol readerError = Starlisp.intern("reader-error");
-  private static final Symbol eofError = Starlisp.intern("eof-error");
+  private static final Symbol readerError = Symbol$.MODULE$.intern("reader-error");
+  private static final Symbol eofError = Symbol$.MODULE$.intern("eof-error");
   private Stack<Character> pushbackStack;
   private boolean open;
   private boolean eof;
@@ -156,7 +156,7 @@ public class LispStream extends LispObject {
 
   private Cons readQuote() throws IOException {
     this.readJavaChar();
-    return new Cons(Starlisp.quote(), new Cons(this.read(), null));
+    return new Cons(Symbol.quote(), new Cons(this.read(), null));
   }
 
   // TODO: "\n" and the likes

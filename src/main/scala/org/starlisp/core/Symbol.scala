@@ -1,15 +1,38 @@
 package org.starlisp.core
 
 import collection.mutable.HashMap
+import java.io.UnsupportedEncodingException
 
 object Symbol {
 
   private var symbols: Cons = null
   private val index = new HashMap[String, Symbol]
 
+  val internalError = intern("internal-error")
+  val t: Symbol = intern("t")
+  val standardOutput = intern("*standard-output*")
+  val standardInput = intern("*standard-input*")
+  val standardError = intern("*standard-error*")
+  val lambda = intern("lambda")
+  val quote = intern("quote")
+  val _if = intern("if")
+  val `macro` = intern("macro")
+  val in = intern("in")
+  val out = intern("out")
+
+  Symbol.t.value = Symbol.t
+  try {
+    Symbol.standardOutput.value = new LispStream(null, System.out)
+    Symbol.standardInput.value = new LispStream(System.in, null)
+    Symbol.standardError.value = new LispStream(null, System.err)
+  }
+  catch {
+    case e: UnsupportedEncodingException => ;
+  }
+
   def getSymbols: Cons = symbols
 
-  def findSymbol(str: String): Symbol = index.getOrElse(str, null)
+  def findSymbol(str: String) = index.getOrElse(str, null)
 
   def intern(str: String): Symbol = (new Symbol(str)).intern
 

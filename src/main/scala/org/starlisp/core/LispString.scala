@@ -14,7 +14,7 @@ class LispString(length: Int) extends LispArray(length) {
   }
 
   override def aset(idx: Int, obj: LispObject): LispObject = {
-    if (!(obj.isInstanceOf[LispChar])) throw new LispException(Starlisp.internalError, "Only Char may be in a string.")
+    if (!(obj.isInstanceOf[LispChar])) throw new LispException(Symbol.internalError, "Only Char may be in a string.")
     return super.aset(idx, obj)
   }
 

@@ -5,8 +5,8 @@ object REPL extends App {
   while(true) {
     try {
       while(true) {
-        Starlisp.standardOutput.value.asInstanceOf[LispStream].writeJavaString("\n>>");
-        println("\n\t" + Starlisp.eval(Starlisp.read(Starlisp.standardInput.value.asInstanceOf[LispStream])))
+        Symbol.standardOutput.value.asInstanceOf[LispStream].writeJavaString("\n>>");
+        println("\n\t" + Starlisp.eval(Starlisp.read(Symbol.standardInput.value.asInstanceOf[LispStream])))
       }
     } catch {
       case e: Exception => e.printStackTrace;

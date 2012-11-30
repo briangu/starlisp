@@ -12,6 +12,7 @@ import java.util.ListIterator;
 import java.util.Map;
 
 public final class JavaMethod extends Procedure {
+
   // FIXME: ARRGGGHH I SEEM TO PREFER OBJECT OVER DOUBLE SOMEOFTHEMTIMES... is this bad? Is it instead maybe what we want?
   //        fix is probably in either accept (more probable) or argumentMoreSpecificThan
 
@@ -130,7 +131,7 @@ public final class JavaMethod extends Procedure {
     if (list.size() == 1) return list.getFirst();
 
 
-    throw new LispException(Starlisp.internalError(), "This should not happen!"); // Seriously, it shouldn't!
+    throw new LispException(Symbol.internalError(), "This should not happen!"); // Seriously, it shouldn't!
   }
 
   // Conversion helpers, does the unboxing and boxing
@@ -164,7 +165,7 @@ public final class JavaMethod extends Procedure {
                                 (obj instanceof Character) ? new LispChar((Character) obj) :
                                     (obj instanceof BigInteger) ? new LispBignum((BigInteger) obj) :
                                         (obj instanceof String) ? new LispString((String) obj) :
-                                            (obj instanceof Boolean) ? (Boolean) obj == true ? Starlisp.t() : null :
+                                            (obj instanceof Boolean) ? (Boolean) obj == true ? Symbol.t() : null :
                                                 new JavaObject(obj);
   }
 
@@ -188,17 +189,17 @@ public final class JavaMethod extends Procedure {
       if (method == null) {
         int m = matchMethod(objects);
         if (m == -1)
-          throw new LispException(Starlisp.internalError(), "No matching method found for the args: " + Arrays.toString(objects));
+          throw new LispException(Symbol.internalError(), "No matching method found for the args: " + Arrays.toString(objects));
         method = methods[m];
         methodMap.get(name()).put(argumentTypes, method);
       }
       return javaToLisp(method.invoke(obj, lispToJava(objects, method.getParameterTypes()))); // Wee...
     } catch (IllegalAccessException e) {
-      throw new LispException(Starlisp.internalError(), e);
+      throw new LispException(Symbol.internalError(), e);
     } catch (InvocationTargetException e) {
-      throw new LispException(Starlisp.internalError(), e);
+      throw new LispException(Symbol.internalError(), e);
     } catch (InstantiationException e) {
-      throw new LispException(Starlisp.internalError(), e);
+      throw new LispException(Symbol.internalError(), e);
     }
   }
 
