@@ -3,6 +3,10 @@ package org.starlisp.core;
 public final class LispException extends RuntimeException {
   public final Symbol tag;
 
+  public LispException(String msg) {
+    this(null, msg);
+  }
+
   public LispException(Symbol tag) {
     this.tag = tag;
   }

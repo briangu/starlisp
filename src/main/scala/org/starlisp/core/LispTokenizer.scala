@@ -2,6 +2,7 @@ package org.starlisp.core
 
 import java.io._
 
+class LispDottedCdr(val obj: LispObject) extends LispObject {}
 
 class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispStream {
 
@@ -13,19 +14,30 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   val tokenizer : StreamTokenizer = if (in != null) {
     val tok = new StreamTokenizer(in)
     tok.resetSyntax()
+    setSyntax(tok)
+    tok
+  } else {
+    null
+  }
+
+  private var syntaxIsSet = false
+  private def resetSyntax() = {
+    tokenizer.resetSyntax()
+    syntaxIsSet = false
+  }
+  private def setSyntax(tok: StreamTokenizer = tokenizer) {
+    if (syntaxIsSet) return
     tok.whitespaceChars(0, ' ')
     tok.wordChars(' '+1,255)
     tok.ordinaryChar('(')
     tok.ordinaryChar(')')
+    tok.ordinaryChar('\\') // TODO: needed generally?
     tok.ordinaryChar('\'')
     tok.ordinaryChar('#')
     tok.ordinaryChar('.')
-//    tok.parseNumbers()
     tok.commentChar(';')
     tok.quoteChar('"')
-    tok
-  } else {
-    null
+    syntaxIsSet = true
   }
 
   def next() : Int = {
@@ -36,46 +48,78 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
     }
   }
 
+  private def dispatch() : LispObject = {
+    resetSyntax()
+    try {
+      tokenizer.nextToken match {
+        case ';' => {
+          setSyntax()
+          read() // skip next s-exp
+          read()
+        }
+        case '\\' => {
+          tokenizer.nextToken()
+          new LispChar(tokenizer.ttype.asInstanceOf[Char])
+        }
+        case '(' => {
+          tokenizer.pushBack()
+          new LispArray(read().asInstanceOf[Cell]) // TODO: add list check
+        }
+        case ch => {
+          tokenizer.pushBack()
+          null
+        }
+      }
+    } finally {
+      setSyntax()
+    }
+  }
+
+  case class ListEnd() extends LispObject
+  case class EmptyList() extends LispObject
+
+  private val listEnd = new ListEnd
+  private val emptyList = new EmptyList
+
+  def readList() : LispObject = {
+    var obj = read()
+    if (obj == listEnd) {
+      null
+    } else {
+      var cell = new Cell(obj)
+      obj = read()
+      if (obj == listEnd) {
+        cell
+      } else if (obj.isInstanceOf[LispDottedCdr]) {
+        cell.cdr = obj.asInstanceOf[LispDottedCdr].obj
+        cell
+      } else {
+        val list = cell
+        do {
+          cell.cdr = new Cell(obj)
+          cell = cell.cdr.asInstanceOf[Cell]
+          obj = read
+        } while (obj != listEnd)
+        list
+      }
+    }
+  }
+
+  def readWord() : LispObject = {
+    val str = tokenizer.sval
+    // TODO: make more efficient
+    if (LispNumber.isNumber(str)) LispNumber.parse(str) else Symbol.intern(str)
+  }
+
   def read() : LispObject = {
      next match {
-      case '(' => {
-        var a = read
-        val cell = new Cell
-        var currentCell = cell
-        while (a != null) {
-          if (currentCell.car != null) {
-            val cdr = new Cell
-            currentCell.cdr = cdr
-            currentCell = cdr
-          }
-          currentCell.car = a
-          a = read
-        }
-        cell
-      }
-      case StreamTokenizer.TT_WORD => {
-//        if (tokenizer.sval.equals("nil")) null else Symbol.intern(tokenizer.sval);
-        //Symbol.intern(tokenizer.sval)
-        val str = tokenizer.sval
-        if (LispNumber.javaStringMatchesLispNumber(str))          // Is a number
-          LispNumber.parse(str);
-        else
-          Symbol.intern(str);
-      }
-      case StreamTokenizer.TT_NUMBER => {
-        val fixNum = math.round(tokenizer.nval)
-        if (fixNum == tokenizer.nval) {
-          new LispFixnum(fixNum)
-        } else {
-          // TODO: bignum
-          new LispFlonum(tokenizer.nval)
-        }
-      }
-      case ')' => null
+      case '(' => readList()
+      case StreamTokenizer.TT_WORD => readWord()
+      case ')' => listEnd
       case '\'' => new Cell(Symbol.quote, new Cell(read, null))
       case '"' => new LispString(tokenizer.sval)
-      case '.' => new Cell(read) // TODO: fix
-      case '#' => null // TODO: dispatch
+      case '.' => new LispDottedCdr(read) // TODO: not use LispDottedCdr
+      case '#' => dispatch()
       case StreamTokenizer.TT_EOF => null
       case ttype => throw new RuntimeException("unhandled type: " + ttype)
     }

@@ -6,7 +6,7 @@ import java.util.regex.Pattern;
 public abstract class LispNumber extends LispObject {
   public static final Pattern REGEX = Pattern.compile("^[+-]?\\d*\\.?(?:\\d+e)?\\d+$"); // The regex to match them all (numbers)
 
-  public static final boolean javaStringMatchesLispNumber(String str) {
+  public static final boolean isNumber(String str) {
     return REGEX.matcher(str).matches();
   }
 

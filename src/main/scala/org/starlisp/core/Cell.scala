@@ -12,6 +12,8 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
     cdr
   }
 
+  def isEmpty() = car == null && cdr == null
+
   private final def hashCode(obj: LispObject): Int = {
     if ((obj == null)) 261835505 else if ((obj.isInstanceOf[Cell])) 1 + obj.hashCode else obj.hashCode
   }
@@ -25,7 +27,11 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   }
 
   override def equals(obj: Any): Boolean = {
-    if ((obj.isInstanceOf[Cell])) equals((obj.asInstanceOf[Cell]).car, car) && equals((obj.asInstanceOf[Cell]).cdr, cdr) else false
+    if (obj == null) {
+      (car == null && cdr == null)
+    } else {
+      if ((obj.isInstanceOf[Cell])) equals((obj.asInstanceOf[Cell]).car, car) && equals((obj.asInstanceOf[Cell]).cdr, cdr) else false
+    }
   }
 
   def length: Int = {

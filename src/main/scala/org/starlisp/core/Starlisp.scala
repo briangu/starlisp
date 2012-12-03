@@ -81,6 +81,7 @@ object Starlisp {
 
   private def intern(str: String) = Symbol.intern(str)
 
+  intern("nil").value = null
   intern("Class").value = new JavaObject(classOf[Class[_]])
   intern("cons").value = new LispSubr("cons", 2) {
     def apply(o: Array[LispObject]): LispObject = {
@@ -513,8 +514,9 @@ class Runtime {
               if (lambdaVar != null) {
                 if (argList == null && lambdaVar.isInstanceOf[Cell]) throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
                 var evalledArgs: Cell = evlis(argList)
-                if (lambdaVar.isInstanceOf[Symbol]) bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
-                else {
+                if (lambdaVar.isInstanceOf[Symbol]) {
+                  bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
+                } else {
                   var c: Cell = lambdaVar.asInstanceOf[Cell]
                   var done = false
                   while (!done) {

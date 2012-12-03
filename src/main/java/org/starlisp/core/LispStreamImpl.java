@@ -197,10 +197,10 @@ public class LispStreamImpl extends LispObject implements LispStream {
     char ch = this.peekJavaChar();
     switch (ch) {
       case ')':
-        this.readChar();                        // Discard the lonely brace
+        this.readJavaChar();                        // Discard the lonely brace
         throw new LispException(readerError, "Lonely ending brace");
       case '.':
-        this.readChar();                        // Discard the stray .
+        this.readJavaChar();                        // Discard the stray .
         throw new LispException(readerError, "Stray dot");
       case '#':
         return this.dispatchFence();
@@ -220,10 +220,11 @@ public class LispStreamImpl extends LispObject implements LispStream {
           sb.append(ch);
         this.unreadJavaChar(ch);
         String str = sb.toString();
-        if (LispNumber.javaStringMatchesLispNumber(str))          // Is a number
+        if (LispNumber.isNumber(str))          // Is a number
           return LispNumber.parse(str);
         else // Is a symbol: Funnyness since nil not separated from java null (early bad decision)
-          return str.equals("nil") ? null : Symbol$.MODULE$.intern(str);
+//          return str.equals("nil") ? null : Symbol$.MODULE$.intern(str);
+          return Symbol$.MODULE$.intern(str);
     }
   }
 }
