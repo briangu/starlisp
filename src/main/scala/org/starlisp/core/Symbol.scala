@@ -39,9 +39,9 @@ object Symbol {
 
   Symbol.t.value = Symbol.t
   try {
-    Symbol.standardOutput.value = new LispStream(null, System.out)
-    Symbol.standardInput.value = new LispStream(System.in, null)
-    Symbol.standardError.value = new LispStream(null, System.err)
+    Symbol.standardOutput.value = new LispStreamImpl(null, System.out)
+    Symbol.standardInput.value = new LispStreamImpl(System.in, null)
+    Symbol.standardError.value = new LispStreamImpl(null, System.err)
   }
   catch {
     case e: UnsupportedEncodingException => ;

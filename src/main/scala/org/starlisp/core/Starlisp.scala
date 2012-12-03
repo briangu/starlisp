@@ -22,6 +22,8 @@ import java.io.StringReader
 
 object Starlisp {
 
+  var done = false
+
   def toStringOrNull(obj: LispObject): String = {
     if (obj != null) obj.toString else "nil"
   }
@@ -53,7 +55,7 @@ object Starlisp {
   }
 
   def readChar(stream: LispStream): LispChar = {
-    new LispChar((if ((stream != null)) stream else Symbol.standardInput.value).asInstanceOf[LispStream].readJavaChar)
+    (if ((stream != null)) stream else Symbol.standardInput.value).asInstanceOf[LispStream].readChar
   }
 
   def writeChar(ch: LispChar, stream: LispStream): LispChar = {
@@ -202,7 +204,8 @@ object Starlisp {
   }
   intern("exit").value = new LispSubr("exit", 0, 1) {
     def apply(o: Array[LispObject]): LispObject = {
-      System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
+      done = true
+      //System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
       null
     }
   }
@@ -250,8 +253,8 @@ object Starlisp {
   intern("open").value = new LispSubr("open", 2) {
     def apply(o: Array[LispObject]): LispObject = {
       try {
-        if (o(1) eq Symbol.in) return new LispStream(new FileReader((o(0).asInstanceOf[LispString]).toJavaString), null)
-        if (o(1) eq Symbol.out) return new LispStream(null, new PrintWriter(new FileWriter((o(0).asInstanceOf[LispString]).toJavaString)))
+        if (o(1) eq Symbol.in) return new LispStreamImpl(new FileReader((o(0).asInstanceOf[LispString]).toJavaString), null)
+        if (o(1) eq Symbol.out) return new LispStreamImpl(null, new PrintWriter(new FileWriter((o(0).asInstanceOf[LispString]).toJavaString)))
         throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
       }
       catch {
@@ -280,7 +283,7 @@ object Starlisp {
   }
   intern("make-string-input-stream").value = new LispSubr("make-string-input-stream", 1) {
     def apply(o: Array[LispObject]): LispObject = {
-      new LispStream(new StringReader((o(0).asInstanceOf[LispString]).toJavaString), null)
+      new LispStreamImpl(new StringReader((o(0).asInstanceOf[LispString]).toJavaString), null)
     }
   }
   intern("make-string-output-stream").value = new LispSubr("make-string-output-stream") {

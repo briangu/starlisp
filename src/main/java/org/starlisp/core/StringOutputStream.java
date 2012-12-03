@@ -3,7 +3,7 @@ package org.starlisp.core;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-public class StringOutputStream extends LispStream {
+public class StringOutputStream extends LispStreamImpl {
   private static StringWriter tmp; // Java is being utterly stupid, but i can use a temporary static variable to redeem part of it
   private final StringWriter stringWriter;
 
