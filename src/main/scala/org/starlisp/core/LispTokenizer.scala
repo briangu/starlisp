@@ -87,21 +87,20 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
       null
     } else {
       var cell = new Cell(obj)
+      val list = cell
       obj = read()
-      if (obj == listEnd) {
-        cell
-      } else if (obj.isInstanceOf[LispDottedCdr]) {
-        cell.cdr = obj.asInstanceOf[LispDottedCdr].obj
-        cell
-      } else {
-        val list = cell
+      if (obj != listEnd) {
         do {
-          cell.cdr = new Cell(obj)
-          cell = cell.cdr.asInstanceOf[Cell]
+          if (obj.isInstanceOf[LispDottedCdr]) {
+            cell.cdr = obj.asInstanceOf[LispDottedCdr].obj
+          } else {
+            cell.cdr = new Cell(obj)
+            cell = cell.cdr.asInstanceOf[Cell]
+          }
           obj = read
         } while (obj != listEnd)
-        list
       }
+      list
     }
   }
 
@@ -118,7 +117,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
       case ')' => listEnd
       case '\'' => new Cell(Symbol.quote, new Cell(read, null))
       case '"' => new LispString(tokenizer.sval)
-      case '.' => new LispDottedCdr(read) // TODO: not use LispDottedCdr
+      case '.' => new LispDottedCdr(read)
       case '#' => dispatch()
       case StreamTokenizer.TT_EOF => null
       case ttype => throw new RuntimeException("unhandled type: " + ttype)

@@ -439,10 +439,9 @@ class Runtime {
     var result: Cell = null
     var last: Cell = null
     if (list == null) return null
-    result = ({
-      last = new Cell(evalHead(list.car), null); last
-    })
-    var c: Cell = list.cdr.asInstanceOf[Cell]
+    last = new Cell(evalHead(list.car), null)
+    result = last
+    var c = list.cdr.asInstanceOf[Cell]
     while (c != null) {
       last = (last.setCdr(new Cell(evalHead(c.car), null))).asInstanceOf[Cell]
       c = c.cdr.asInstanceOf[Cell]
@@ -500,8 +499,7 @@ class Runtime {
           }
         } else if (list.car == Symbol.quote) {
           return (list.cdr.asInstanceOf[Cell]).car
-        }
-        else if (list.car == Symbol.lambda || list.car == Symbol.`macro`) {
+        } else if (list.car == Symbol.lambda || list.car == Symbol.`macro`) {
           return list
         } else {
           val first: LispObject = evalHead(list.car)
