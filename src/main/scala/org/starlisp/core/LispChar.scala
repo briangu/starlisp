@@ -4,7 +4,7 @@ import collection.mutable
 
 object LispChar {
   val cache = new mutable.HashMap[Char, LispChar]()
-  def create(ch: Char) = cache.getOrElseUpdate(ch, new LispChar(ch))
+  def create(ch: Char) = new LispChar(ch)//cache.getOrElseUpdate(ch, new LispChar(ch))
 }
 
 class LispChar(val ch: Char = 0) extends LispObject {

@@ -15,6 +15,7 @@ class SymbolContext {
     symbols
   }
 
+  def isInterned(sym: Symbol) = index.contains(sym.name)
   def findSymbol(str: String) = index.getOrElse(str, null)
 
   def intern(str: String): Symbol = intern(new Symbol(str))
@@ -53,18 +54,15 @@ object Symbol {
   def intern(sym: Symbol) : Symbol = intern(context, sym)
   def intern(str: String) : Symbol = intern(new Symbol(str))
 
+  def isInterned(sym: Symbol) = context.isInterned(sym)
+
   def intern(context: SymbolContext, sym: Symbol): Symbol = {
-    if (sym.interned) {
+    val sbl = context.findSymbol(sym.name)
+    if (sbl == null) {
+      context.index(sym.name) = sym
       sym
     } else {
-      val sbl = context.findSymbol(sym.name)
-      if (sbl == null) {
-        context.index(sym.name) = sym
-        sym.interned = true // TODO: can we just return sbl and throw away sym?
-        sym
-      } else {
-        sbl
-      }
+      sbl
     }
   }
 }
@@ -72,7 +70,8 @@ object Symbol {
 class Symbol(var name: String = null) extends LispObject {
 
   var value: LispObject = null
-  private var interned: Boolean = false
 
-  override def toString = if (this.interned) this.name else "#:" + this.name
+  override def toString = {
+    if (Symbol.isInterned(this)) "#:" + this.name else this.name
+  }
 }

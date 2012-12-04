@@ -2,22 +2,19 @@ package org.starlisp.core
 
 class LispString(length: Int) extends LispArray(length) {
 
+  var str: String = null
+
   def this(arr: String) = {
     this(arr.length)
+    str = arr
     // TODO: use OBJLIST
     (0 until length).foreach(idx => ar(idx) = LispChar.create(arr.charAt(idx)))
   }
 
-  def this(arr: Array[LispObject]) = {
+  def this(arr: Array[Char]) = {
     this(arr.length)
     // TODO: use OBJLIST
-    (0 until length).foreach(idx => ar(idx) = arr(idx))
-  }
-
-  def this(str: Array[Char]) = {
-    this(str.length)
-    // TODO: use OBJLIST
-    (0 until length).foreach(idx => ar(idx) = LispChar.create(str(idx)))
+    (0 until length).foreach(idx => ar(idx) = LispChar.create(arr(idx)))
   }
 
   def this(length: Int, ch: LispChar) = {
@@ -31,9 +28,13 @@ class LispString(length: Int) extends LispArray(length) {
   }
 
   def toJavaString: String = {
-    val sb: StringBuffer = new StringBuffer
-    for (o <- ar) sb.append((o.asInstanceOf[LispChar]).ch)
-    return sb.toString
+    if (str == null) {
+      val sb: StringBuffer = new StringBuffer
+      for (o <- ar) sb.append((o.asInstanceOf[LispChar]).ch)
+      sb.toString
+    } else {
+      str
+    }
   }
 
   override def toString: String = {

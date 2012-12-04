@@ -363,9 +363,10 @@ public class FastStreamTokenizer {
       */
       int d = read();
       while (d >= 0 && d != ttype && d != '\n' && d != '\r') {
+   /*
         if (d == '\\') {
           c = read();
-          int first = c;   /* To allow \377, but not \477 */
+          int first = c;   // To allow \377, but not \477
           if (c >= '0' && c <= '7') {
             c = c - '0';
             int c2 = read();
@@ -405,7 +406,9 @@ public class FastStreamTokenizer {
             }
             d = read();
           }
-        } else {
+        } else
+   */
+        {
           c = d;
           d = read();
         }

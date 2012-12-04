@@ -403,7 +403,7 @@
                                      (handle-let (cadr sexp) acc))))
             (t (walk-for-rebinding (cdr sexp) acc))))))
 
-#;(defmacro defun. (a)
+(defmacro defun. (a)
   (let ((name      (cadr  a))
         (variables (caddr a))
         (body      (cdddr a)))
@@ -507,7 +507,7 @@
           result))))
     
 
-#;(defun call-for-list (lst fn)
+(defun call-for-list (lst fn)
   (cond ((end? (cdr lst)) (fn (car lst)))
         (t                (fn (car lst))
                           (call-for-list (cdr lst) fn))))
@@ -550,7 +550,7 @@
 ;;     (list 'progn (list 'call-for-list lst (list* 'lambda (list var) body))
 ;;           result))))
 
-#;(defun mapcar (fn lst)
+(defun mapcar (fn lst)
   ((lambda (mapcar-helper) (mapcar-helper fn lst nil))
    (lambda (fn lst acc)
      (if (end? lst)
@@ -824,14 +824,14 @@
     (dotimes (i (length str))
       (write-char (aref str i) stream))))
 
-#;(defun generate-ascii-table (listfist)
+(defun generate-ascii-table (listfist)
   (let ((roop (lambda (lst i acc)
                 (if (end? lst)
                     acc
                     (roop (cdr lst) (+ i 1) (acons (car lst) i acc))))))
     (roop listfist 0 nil)))
 
-#;(setq ascii-table (generate-ascii-table
+(setq ascii-table (generate-ascii-table
                    '(NUL SOH STX ETX EOT ENQ ACK BEL BS TAB LF VT FF CR SO SI DLE DC1
                      DC2 DC3 DC4 NAK SYN ETB CAN EM SUB ESC FS GS RS US | | !
                      |"| |#| $ % & |'| |(| |)| * + , - |.| / 0 1 2 3 4 5 6 7 8 9
@@ -839,14 +839,14 @@
                      X Y Z [ \ ] ^ _ ` a b c d e f g h i j k l m n o p q r s t u v w
                      x y z { || } ~ DEL)))
 
-#;(defun to-string (lst)
+(defun to-string (lst)
   (let ((roop (lambda (lst acc)
                 (if (end? lst)
                     (reverse acc)
                     (roop (cdr lst) (cons (cdr (assoc (car lst) ascii-table)) acc))))))
     (roop lst nil)))
 
-#;(defun from-string (lst)
+(defun from-string (lst)
   (let ((roop (lambda (lst acc)
                 (if (end? lst)
                     (reverse acc)
