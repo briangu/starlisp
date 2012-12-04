@@ -74,7 +74,7 @@ public class LispStreamImpl extends LispObject implements LispStream {
   } // Throws NullPointerException
 
   public LispChar readChar() throws IOException {          // Throws NullPointerException when not input stream FIXME?
-    return new LispChar(readJavaChar());
+    return LispChar.create(readJavaChar());
   }
 
   public char readJavaChar() throws IOException {
@@ -180,7 +180,7 @@ public class LispStreamImpl extends LispObject implements LispStream {
       return this.read();
     }                                 // Commment out a sexp
     else if (ch == '\\')
-      return new LispChar(this.readJavaChar());                            // Read  a character
+      return LispChar.create(this.readJavaChar());                            // Read  a character
     else if (ch == '(') {
       this.unreadJavaChar('(');
       return new LispArray(this.readList());

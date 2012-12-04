@@ -40,7 +40,7 @@ object Symbol {
   Symbol.t.value = Symbol.t
   try {
     Symbol.standardOutput.value = new LispStreamImpl(null, System.out)
-    Symbol.standardInput.value = new LispTokenizer(System.in, null)
+    Symbol.standardInput.value = new LispStreamImpl(System.in, null)
     Symbol.standardError.value = new LispStreamImpl(null, System.err)
   }
   catch {
@@ -74,5 +74,5 @@ class Symbol(var name: String = null) extends LispObject {
   var value: LispObject = null
   private var interned: Boolean = false
 
-  override def toString: String = if (this.interned) this.name else "#:" + this.name
+  override def toString = if (this.interned) this.name else "#:" + this.name
 }

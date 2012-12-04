@@ -2,10 +2,22 @@ package org.starlisp.core
 
 class LispString(length: Int) extends LispArray(length) {
 
-  def this(str: String) = {
+  def this(arr: String) = {
+    this(arr.length)
+    // TODO: use OBJLIST
+    (0 until length).foreach(idx => ar(idx) = LispChar.create(arr.charAt(idx)))
+  }
+
+  def this(arr: Array[LispObject]) = {
+    this(arr.length)
+    // TODO: use OBJLIST
+    (0 until length).foreach(idx => ar(idx) = arr(idx))
+  }
+
+  def this(str: Array[Char]) = {
     this(str.length)
     // TODO: use OBJLIST
-    (0 until length).foreach(idx => ar(idx) = new LispChar(str.charAt(idx)))
+    (0 until length).foreach(idx => ar(idx) = LispChar.create(str(idx)))
   }
 
   def this(length: Int, ch: LispChar) = {

@@ -347,7 +347,7 @@ object Starlisp {
   }
   intern("integer->char").value = new LispSubr("integer->char", 1) {
     def apply(o: Array[LispObject]): LispObject = {
-      new LispChar((o(0).asInstanceOf[LispInteger]).toJavaInt.asInstanceOf[Char])
+      LispChar.create((o(0).asInstanceOf[LispInteger]).toJavaInt.asInstanceOf[Char])
     }
   }
   intern("type?").value = new LispSubr("type?", 2) {

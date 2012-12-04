@@ -31,13 +31,11 @@ object REPL {
 
   def main(args: Array[String]) {
     var runtime = new Runtime
-/*
     warmup(runtime)
     warmup2(runtime)
     Starlisp.done = false
     runtime = new Runtime
     warmup(runtime)
-*/
     val start = System.currentTimeMillis()
     while(!Starlisp.done) {
       try {

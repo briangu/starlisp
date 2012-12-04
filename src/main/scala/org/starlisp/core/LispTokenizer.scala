@@ -11,8 +11,8 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
          if (os != null) new PrintWriter(os, true) else null)
   }
 
-  val tokenizer : StreamTokenizer = if (in != null) {
-    val tok = new StreamTokenizer(in)
+  val tokenizer : FastStreamTokenizer = if (in != null) {
+    val tok = new FastStreamTokenizer(in)
     tok.resetSyntax()
     setSyntax(tok)
     tok
@@ -25,16 +25,14 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
     tokenizer.resetSyntax()
     syntaxIsSet = false
   }
-  private def setSyntax(tok: StreamTokenizer = tokenizer) {
+  private def setSyntax(tok: FastStreamTokenizer = tokenizer) {
     if (syntaxIsSet) return
     tok.whitespaceChars(0, ' ')
     tok.wordChars(' '+1,255)
     tok.ordinaryChar('(')
     tok.ordinaryChar(')')
-    tok.ordinaryChar('\\') // TODO: needed generally?
     tok.ordinaryChar('\'')
     tok.ordinaryChar('#')
-    tok.ordinaryChar('.')
     tok.commentChar(';')
     tok.quoteChar('"')
     syntaxIsSet = true
@@ -55,11 +53,11 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
         case ';' => {
           setSyntax()
           read() // skip next s-exp
-          read()
+          null
         }
         case '\\' => {
           tokenizer.nextToken()
-          new LispChar(tokenizer.ttype.asInstanceOf[Char])
+          LispChar.create(tokenizer.ttype.asInstanceOf[Char])
         }
         case '(' => {
           tokenizer.pushBack()
@@ -76,10 +74,8 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   }
 
   case class ListEnd() extends LispObject
-  case class EmptyList() extends LispObject
 
   private val listEnd = new ListEnd
-  private val emptyList = new EmptyList
 
   def readList() : LispObject = {
     var obj = read()
@@ -106,8 +102,12 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
 
   def readWord() : LispObject = {
     val str = tokenizer.sval
-    // TODO: make more efficient
-    if (LispNumber.isNumber(str)) LispNumber.parse(str) else Symbol.intern(str)
+    if (str.equals(".")) {
+      new LispDottedCdr(read)
+    } else {
+      // TODO: make more efficient
+      if (LispNumber.isNumber(str)) LispNumber.parse(str) else Symbol.intern(str)
+    }
   }
 
   def read() : LispObject = {
@@ -117,7 +117,6 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
       case ')' => listEnd
       case '\'' => new Cell(Symbol.quote, new Cell(read, null))
       case '"' => new LispString(tokenizer.sval)
-      case '.' => new LispDottedCdr(read)
       case '#' => dispatch()
       case StreamTokenizer.TT_EOF => null
       case ttype => throw new RuntimeException("unhandled type: " + ttype)

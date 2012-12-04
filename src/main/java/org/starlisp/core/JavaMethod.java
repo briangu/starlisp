@@ -146,7 +146,7 @@ public final class JavaMethod extends Procedure {
                           (argt[i] == int.class || argt[i] == Integer.class) ? ((LispInteger) objs[i]).toJavaInt() :
                               (argt[i] == short.class || argt[i] == Short.class) ? new Short((short) ((LispInteger) objs[i]).toJavaInt()) :
                                   (argt[i] == BigInteger.class) ? ((LispInteger) objs[i]).toJavaBigInteger() :
-                                      (argt[i] == char.class || argt[i] == Character.class) ? ((LispChar) objs[i]).ch :
+                                      (argt[i] == char.class || argt[i] == Character.class) ? ((LispChar) objs[i]).ch() :
                                           (argt[i] == long.class || argt[i] == Long.class) ? ((LispInteger) objs[i]).toJavaLong() :
                                               (argt[i] == Boolean.class || argt[i] == boolean.class) ? objs[i] != null :
                                                   (argt[i] == String.class) ? ((LispString) objs[i]).toJavaString() :
@@ -162,7 +162,7 @@ public final class JavaMethod extends Procedure {
                     (obj instanceof Short) ? new LispFixnum((Short) obj) :
                         (obj instanceof Integer) ? new LispFixnum((Integer) obj) :
                             (obj instanceof Long) ? new LispFixnum((Long) obj) :
-                                (obj instanceof Character) ? new LispChar((Character) obj) :
+                                (obj instanceof Character) ? LispChar.create((Character) obj) :
                                     (obj instanceof BigInteger) ? new LispBignum((BigInteger) obj) :
                                         (obj instanceof String) ? new LispString((String) obj) :
                                             (obj instanceof Boolean) ? (Boolean) obj == true ? Symbol$.MODULE$.t() : null :
