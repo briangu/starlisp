@@ -77,5 +77,6 @@ object REPL {
     }
     now = System.currentTimeMillis()
     println("total time: %d".format(now - start))
+    Counters.report()
   }
 }

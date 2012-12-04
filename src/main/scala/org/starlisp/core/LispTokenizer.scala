@@ -13,20 +13,8 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
 
   val tokenizer : FastStreamTokenizer = if (in != null) {
     val tok = new FastStreamTokenizer(in)
+    tok.useSetSyntax()
     tok.resetSyntax()
-    setSyntax(tok)
-    tok
-  } else {
-    null
-  }
-
-  private var syntaxIsSet = false
-  private def resetSyntax() = {
-    tokenizer.resetSyntax()
-    syntaxIsSet = false
-  }
-  private def setSyntax(tok: FastStreamTokenizer = tokenizer) {
-    if (syntaxIsSet) return
     tok.whitespaceChars(0, ' ')
     tok.wordChars(' '+1,255)
     tok.ordinaryChar('(')
@@ -35,7 +23,16 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
     tok.ordinaryChar('#')
     tok.commentChar(';')
     tok.quoteChar('"')
-    syntaxIsSet = true
+    tok
+  } else {
+    null
+  }
+
+  private def resetSyntax() = {
+    tokenizer.useClearSyntax()
+  }
+  private def setSyntax(tok: FastStreamTokenizer = tokenizer) {
+    tokenizer.useSetSyntax()
   }
 
   def next() : Int = {
@@ -60,12 +57,10 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
           LispChar.create(tokenizer.ttype.asInstanceOf[Char])
         }
         case '(' => {
-          tokenizer.pushBack()
-          new LispArray(read().asInstanceOf[Cell]) // TODO: add list check
+          new LispArray(readList().asInstanceOf[Cell]) // TODO: add list check
         }
         case ch => {
-          tokenizer.pushBack()
-          null
+          throw new LispException("dispatch syntax error.")
         }
       }
     } finally {
@@ -101,7 +96,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   }
 
   def readWord() : LispObject = {
-    val str = tokenizer.sval
+    val str = String.copyValueOf(tokenizer.buf, 0, tokenizer.bufLimit)
     if (str.equals(".")) {
       new LispDottedCdr(read)
     } else {
@@ -116,7 +111,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
       case StreamTokenizer.TT_WORD => readWord()
       case ')' => listEnd
       case '\'' => new Cell(Symbol.quote, new Cell(read, null))
-      case '"' => new LispString(tokenizer.sval)
+      case '"' => new LispString(tokenizer.buf, tokenizer.bufLimit)
       case '#' => dispatch()
       case StreamTokenizer.TT_EOF => null
       case ttype => throw new RuntimeException("unhandled type: " + ttype)

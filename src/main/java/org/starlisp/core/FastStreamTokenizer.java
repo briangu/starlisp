@@ -2,7 +2,6 @@ package org.starlisp.core;
 
 import java.io.IOException;
 import java.io.Reader;
-import java.util.Arrays;
 
 /**
  * The <code>StreamTokenizer</code> class takes an input stream and
@@ -44,7 +43,8 @@ public class FastStreamTokenizer {
   /* Only one of these will be non-null */
   private Reader reader = null;
 
-  private char buf[] = new char[1024];
+  char buf[] = new char[1024];
+  int bufLimit = -1;
 
   /**
    * The next character to be considered by the nextToken method.  May also
@@ -58,13 +58,21 @@ public class FastStreamTokenizer {
   private static final int NEED_CHAR = Integer.MAX_VALUE;
   private static final int SKIP_LF = Integer.MAX_VALUE - 1;
 
-  private boolean pushedBack;
-
-  private byte ctype[] = new byte[256];
+  private byte resetCType[] = new byte[256];
+  private byte setCType[] = new byte[256];
+  private byte ctype[] = setCType;
   private static final byte CT_WHITESPACE = 1;
   private static final byte CT_ALPHA = 4;
   private static final byte CT_QUOTE = 8;
   private static final byte CT_COMMENT = 16;
+
+  public void useSetSyntax() {
+    ctype = setCType;
+  }
+
+  public void useClearSyntax() {
+    ctype = resetCType;
+  }
 
   /**
    * After a call to the <code>nextToken</code> method, this field
@@ -128,9 +136,7 @@ public class FastStreamTokenizer {
    * @see     java.io.StreamTokenizer#TT_WORD
    * @see     java.io.StreamTokenizer#ttype
    */
-  public String sval;
-
-  public LispObject[] cval;
+//  public String sval;
 
   /**
    * Create a tokenizer that parses the given character stream.
@@ -305,12 +311,8 @@ public class FastStreamTokenizer {
    * @see        java.io.StreamTokenizer#ttype
    */
   public int nextToken() throws IOException {
-    if (pushedBack) {
-      pushedBack = false;
-      return ttype;
-    }
     byte ct[] = ctype;
-    sval = null;
+    //sval = null;
 
     int c = peekc;
     if (c < 0 || c == NEED_CHAR) {
@@ -340,82 +342,39 @@ public class FastStreamTokenizer {
     }
 
     if ((ctype & CT_ALPHA) != 0) {
-      int i = 0;
+      bufLimit = 0;
       do {
+/*
         if (i >= buf.length) {
           buf = Arrays.copyOf(buf, buf.length * 2);
         }
-        buf[i++] = (char) c;
+*/
+        buf[bufLimit++] = (char) c;
         c = read();
         ctype = c < 0 ? CT_WHITESPACE : c < 256 ? ct[c] : CT_ALPHA;
       } while ((ctype & (CT_ALPHA)) != 0);
       peekc = c;
-      sval = String.copyValueOf(buf, 0, i);
+      //sval = String.copyValueOf(buf, 0, i);
       return ttype = TT_WORD;
     }
 
     if ((ctype & CT_QUOTE) != 0) {
       ttype = c;
-      int i = 0;
+      bufLimit = 0;
       /* Invariants (because \Octal needs a lookahead):
       *   (i)  c contains char value
       *   (ii) d contains the lookahead
       */
       int d = read();
       while (d >= 0 && d != ttype && d != '\n' && d != '\r') {
-   /*
-        if (d == '\\') {
-          c = read();
-          int first = c;   // To allow \377, but not \477
-          if (c >= '0' && c <= '7') {
-            c = c - '0';
-            int c2 = read();
-            if ('0' <= c2 && c2 <= '7') {
-              c = (c << 3) + (c2 - '0');
-              c2 = read();
-              if ('0' <= c2 && c2 <= '7' && first <= '3') {
-                c = (c << 3) + (c2 - '0');
-                d = read();
-              } else
-                d = c2;
-            } else
-              d = c2;
-          } else {
-            switch (c) {
-              case 'a':
-                c = 0x7;
-                break;
-              case 'b':
-                c = '\b';
-                break;
-              case 'f':
-                c = 0xC;
-                break;
-              case 'n':
-                c = '\n';
-                break;
-              case 'r':
-                c = '\r';
-                break;
-              case 't':
-                c = '\t';
-                break;
-              case 'v':
-                c = 0xB;
-                break;
-            }
-            d = read();
-          }
-        } else
-   */
-        {
-          c = d;
-          d = read();
-        }
+        c = d;
+        d = read();
+/*
         if (i >= buf.length) {
           buf = Arrays.copyOf(buf, buf.length * 2);
         }
-        buf[i++] = (char)c;
+*/
+        buf[bufLimit++] = (char)c;
       }
 
       /* If we broke out of the loop because we found a matching quote
@@ -424,7 +383,7 @@ public class FastStreamTokenizer {
       */
       peekc = (d == ttype) ? NEED_CHAR : d;
 
-      sval = String.copyValueOf(buf, 0, i);
+      //sval = String.copyValueOf(buf, 0, i);
       return ttype;
     }
 
@@ -436,70 +395,4 @@ public class FastStreamTokenizer {
 
     return ttype = c;
   }
-
-  /**
-   * Causes the next call to the <code>nextToken</code> method of this
-   * tokenizer to return the current value in the <code>ttype</code>
-   * field, and not to modify the value in the <code>nval</code> or
-   * <code>sval</code> field.
-   *
-   * @see     java.io.StreamTokenizer#nextToken()
-   * @see     java.io.StreamTokenizer#nval
-   * @see     java.io.StreamTokenizer#sval
-   * @see     java.io.StreamTokenizer#ttype
-   */
-  public void pushBack() {
-    if (ttype != TT_NOTHING)   /* No-op if nextToken() not called */
-      pushedBack = true;
-  }
-
-  /**
-   * Returns the string representation of the current stream token and
-   * the line number it occurs on.
-   *
-   * <p>The precise string returned is unspecified, although the following
-   * example can be considered typical:
-   *
-   * <blockquote><pre>Token['a'], line 10</pre></blockquote>
-   *
-   * @return  a string representation of the token
-   * @see     java.io.StreamTokenizer#nval
-   * @see     java.io.StreamTokenizer#sval
-   * @see     java.io.StreamTokenizer#ttype
-   */
-  public String toString() {
-    String ret;
-    switch (ttype) {
-      case TT_EOF:
-        ret = "EOF";
-        break;
-      case TT_WORD:
-        ret = sval;
-        break;
-      case TT_NOTHING:
-        ret = "NOTHING";
-        break;
-      default: {
-        /*
-        * ttype is the first character of either a quoted string or
-        * is an ordinary character. ttype can definitely not be less
-        * than 0, since those are reserved values used in the previous
-        * case statements
-        */
-        if (ttype < 256 &&
-            ((ctype[ttype] & CT_QUOTE) != 0)) {
-          ret = sval;
-          break;
-        }
-
-        char s[] = new char[3];
-        s[0] = s[2] = '\'';
-        s[1] = (char) ttype;
-        ret = new String(s);
-        break;
-      }
-    }
-    return "Token[" + ret + "]";
-  }
-
 }
