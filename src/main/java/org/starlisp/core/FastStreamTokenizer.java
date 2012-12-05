@@ -364,8 +364,9 @@ public class FastStreamTokenizer {
       *   (ii) d contains the lookahead
       */
       int d = read();
-      while (d >= 0 && d != ttype && d != '\n' && d != '\r') {
-        c = d;
+//      while (d >= 0 && d != ttype && d != '\n' && d != '\r') {
+      while (d >= 0 && d != ttype) {
+          c = d;
         d = read();
 /*
         if (i >= buf.length) {

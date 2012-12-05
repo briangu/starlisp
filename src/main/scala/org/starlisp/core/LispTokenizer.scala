@@ -2,7 +2,7 @@ package org.starlisp.core
 
 import java.io._
 
-class LispDottedCdr(val obj: LispObject) extends LispObject {}
+class LispDottedCdr(var obj: LispObject = null) extends LispObject {}
 
 class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispStream {
 
@@ -71,6 +71,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   case class ListEnd() extends LispObject
 
   private val listEnd = new ListEnd
+  private val dottedCdr = new LispDottedCdr
 
   def readList() : LispObject = {
     var obj = read()
@@ -98,7 +99,8 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   def readWord() : LispObject = {
     val str = String.copyValueOf(tokenizer.buf, 0, tokenizer.bufLimit)
     if (str.equals(".")) {
-      new LispDottedCdr(read)
+      dottedCdr.obj = read
+      dottedCdr
     } else {
       // TODO: make more efficient
       if (LispNumber.isNumber(str)) LispNumber.parse(str) else Symbol.intern(str)
