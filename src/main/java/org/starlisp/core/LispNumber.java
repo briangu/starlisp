@@ -11,11 +11,11 @@ public abstract class LispNumber extends LispObject {
   }
 
   protected static final LispBignum coerceFixnumToBignum(LispNumber nbr) {
-    return new LispBignum(((LispFixnum) nbr).toJavaLong());
+    return new LispBignum(nbr.toJavaLong());
   }
 
   protected static final LispFlonum coerceIntegerToFlonum(LispNumber nbr) {
-    return new LispFlonum(((LispInteger) nbr).toJavaDouble());
+    return new LispFlonum(nbr.toJavaDouble());
   }
 
   /* Take that String and make a fitting LispNumber */

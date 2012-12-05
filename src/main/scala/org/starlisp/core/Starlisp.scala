@@ -24,9 +24,7 @@ object Starlisp {
 
   var done = false
 
-  def toStringOrNull(obj: LispObject): String = {
-    if (obj != null) obj.toString else "nil"
-  }
+  def toStringOrNull(obj: LispObject): String = Option(obj).getOrElse("nil").toString
 
   def prin1(obj: LispObject, stream: LispStream): LispObject = {
     val s = if ((stream != null)) stream else Symbol.standardOutput.value
@@ -38,24 +36,18 @@ object Starlisp {
     obj
   }
 
-  def cons(car: LispObject, cdr: LispObject): Cell = {
-    new Cell(car, cdr)
-  }
+  def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
+  def car(list: Cell): LispObject = if (list == null) null else list.car
+  def cdr(list: Cell): LispObject = if (list == null) null else list.cdr
 
-  def car(list: Cell): LispObject = {
-    if ((list == null)) null else list.car
-  }
-
-  def cdr(list: Cell): LispObject = {
-    if ((list == null)) null else list.cdr
-  }
+  def eq(obj1: LispObject, obj2: LispObject): LispObject = if (obj1 eq obj2) Symbol.t else null
 
   def read(stream: LispStream): LispObject = {
-    (if ((stream != null)) stream else Symbol.standardInput.value).asInstanceOf[LispStream].read
+    (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispStream].read
   }
 
   def readChar(stream: LispStream): LispChar = {
-    (if ((stream != null)) stream else Symbol.standardInput.value).asInstanceOf[LispStream].readChar
+    (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispStream].readChar
   }
 
   def writeChar(ch: LispChar, stream: LispStream): LispChar = {
@@ -63,20 +55,21 @@ object Starlisp {
     ch
   }
 
-  def eq(obj1: LispObject, obj2: LispObject): LispObject = {
-    if (obj1 eq obj2) Symbol.t else null
-  }
+  private def symbolValue(sbl: Symbol): LispObject = sbl.value
 
-  private def symbolValue(sbl: Symbol): LispObject = {
-    sbl.value
-  }
-
-  private def atom(obj: LispObject): LispObject = {
-    if ((obj.isInstanceOf[Cell])) null else Symbol.t
-  }
+  private def atom(obj: LispObject): LispObject = if ((obj.isInstanceOf[Cell])) null else Symbol.t
 
   private def eql(a: LispObject, b: LispObject): LispObject = {
-    if ((a == null || b == null)) eq(a, b) else if (!a.getClass.isInstance(b)) null else if ((a.isInstanceOf[LispChar])) if (((a.asInstanceOf[LispChar]).ch == (a.asInstanceOf[LispChar]).ch)) Symbol.t else null else if ((a.isInstanceOf[LispNumber])) (if (((a.asInstanceOf[LispNumber]) == b.asInstanceOf[LispNumber])) Symbol.t else null) else eq(a, b)
+    if (a == null || b == null)
+      eq(a, b)
+    else if (!a.getClass.isInstance(b))
+      null
+    else if (a.isInstanceOf[LispChar])
+      if (a.asInstanceOf[LispChar].ch == a.asInstanceOf[LispChar].ch) Symbol.t else null
+    else if ((a.isInstanceOf[LispNumber]))
+      if (a.asInstanceOf[LispNumber] == b.asInstanceOf[LispNumber]) Symbol.t else null
+    else
+      eq(a, b)
   }
 
   private def intern(str: String) = Symbol.intern(str)
@@ -84,19 +77,13 @@ object Starlisp {
   intern("nil").value = null
   intern("Class").value = new JavaObject(classOf[Class[_]])
   intern("cons").value = new LispSubr("cons", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      cons(o(0), o(1))
-    }
+    def apply(o: Array[LispObject]): LispObject = cons(o(0), o(1))
   }
   intern("car").value = new LispSubr("car", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      car(o(0).asInstanceOf[Cell])
-    }
+    def apply(o: Array[LispObject]): LispObject = car(o(0).asInstanceOf[Cell])
   }
   intern("cdr").value = new LispSubr("cdr", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      cdr(o(0).asInstanceOf[Cell])
-    }
+    def apply(o: Array[LispObject]): LispObject = cdr(o(0).asInstanceOf[Cell])
   }
   intern("rplaca").value = new LispSubr("rplaca", 2) {
     def apply(o: Array[LispObject]): LispObject = {
@@ -116,14 +103,10 @@ object Starlisp {
     }
   }
   intern("eq?").value = new LispSubr("eq?", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      Starlisp.eq(o(0), o(1))
-    }
+    def apply(o: Array[LispObject]): LispObject = Starlisp.eq(o(0), o(1))
   }
   intern("atom?").value = new LispSubr("atom?", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      atom(o(0))
-    }
+    def apply(o: Array[LispObject]): LispObject = atom(o(0))
   }
   intern("set").value = new LispSubr("set", 2) {
     def apply(o: Array[LispObject]): LispObject = {
@@ -211,9 +194,7 @@ object Starlisp {
     }
   }
   intern("get-time").value = new LispSubr("get-time") {
-    def apply(o: Array[LispObject]): LispObject = {
-      new LispFixnum(System.currentTimeMillis)
-    }
+    def apply(o: Array[LispObject]): LispObject = new LispFixnum(System.currentTimeMillis)
   }
   intern("read-char").value = new LispSubr("read-char", 0, 1) {
     def apply(o: Array[LispObject]): LispObject = {
@@ -278,9 +259,7 @@ object Starlisp {
     }
   }
   intern("eof?").value = new LispSubr("eof?", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if ((o(0).asInstanceOf[LispStream]).eof) Symbol.t else null
-    }
+    def apply(o: Array[LispObject]): LispObject = if ((o(0).asInstanceOf[LispStream]).eof) Symbol.t else null
   }
   intern("make-string-input-stream").value = new LispSubr("make-string-input-stream", 1) {
     def apply(o: Array[LispObject]): LispObject = {
@@ -288,9 +267,7 @@ object Starlisp {
     }
   }
   intern("make-string-output-stream").value = new LispSubr("make-string-output-stream") {
-    def apply(o: Array[LispObject]): LispObject = {
-      new StringOutputStream
-    }
+    def apply(o: Array[LispObject]): LispObject = new StringOutputStream
   }
   intern("get-output-stream-string").value = new LispSubr("get-output-stream-string", 1) {
     def apply(o: Array[LispObject]): LispObject = {
@@ -331,14 +308,10 @@ object Starlisp {
     }
   }
   intern("sxhash").value = new LispSubr("sxhash", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      new LispFixnum(if ((o(0) == null)) 0 else o(0).hashCode)
-    }
+    def apply(o: Array[LispObject]): LispObject = new LispFixnum(if ((o(0) == null)) 0 else o(0).hashCode)
   }
   intern("running-compiled?").value = new LispSubr("running-compiled?") {
-    def apply(o: Array[LispObject]): LispObject = {
-      null
-    }
+    def apply(o: Array[LispObject]): LispObject = null
   }
   intern("char->integer").value = new LispSubr("char->integer", 1) {
     def apply(o: Array[LispObject]): LispObject = {
@@ -436,11 +409,9 @@ class Runtime {
   }
 
   private final def evlis(list: Cell): Cell = {
-    var result: Cell = null
-    var last: Cell = null
     if (list == null) return null
-    last = new Cell(evalHead(list.car), null)
-    result = last
+    var last = new Cell(evalHead(list.car), null)
+    val result = last
     var c = list.cdr.asInstanceOf[Cell]
     while (c != null) {
       last = (last.setCdr(new Cell(evalHead(c.car), null))).asInstanceOf[Cell]
@@ -462,15 +433,12 @@ class Runtime {
   }
 
   private final def evalHead(obj: LispObject): LispObject = {
-    var res: LispObject = null
     saveEnvironment
     try {
-      res = evalTail(obj)
-    }
-    finally {
+      evalTail(obj)
+    } finally {
       restoreEnvironment
     }
-    res
   }
 
   /**
@@ -487,9 +455,9 @@ class Runtime {
         return (obj.asInstanceOf[Symbol]).value
       }
       else if (obj.isInstanceOf[Cell]) {
-        val list: Cell = obj.asInstanceOf[Cell]
+        val list = obj.asInstanceOf[Cell]
         if (list.car eq Symbol._if) {
-          val res: LispObject = evalHead((list.cdr.asInstanceOf[Cell]).car)
+          val res = evalHead((list.cdr.asInstanceOf[Cell]).car)
           if (res != null) {
             obj = ((list.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]).car
           } else if (((list.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]).cdr != null) {
@@ -502,20 +470,20 @@ class Runtime {
         } else if (list.car == Symbol.lambda || list.car == Symbol.`macro`) {
           return list
         } else {
-          val first: LispObject = evalHead(list.car)
+          val first = evalHead(list.car)
           if (first.isInstanceOf[Cell]) {
             val f1rst: Cell = first.asInstanceOf[Cell]
             if (f1rst.car eq Symbol.lambda) {
-              val lambdaVar: LispObject = (f1rst.cdr.asInstanceOf[Cell]).car
-              var lambdaBody: Cell = (f1rst.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]
-              val argList: Cell = list.cdr.asInstanceOf[Cell]
+              val lambdaVar = (f1rst.cdr.asInstanceOf[Cell]).car
+              var lambdaBody = (f1rst.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]
+              val argList = list.cdr.asInstanceOf[Cell]
               if (lambdaVar != null) {
                 if (argList == null && lambdaVar.isInstanceOf[Cell]) throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
-                var evalledArgs: Cell = evlis(argList)
+                var evalledArgs = evlis(argList)
                 if (lambdaVar.isInstanceOf[Symbol]) {
                   bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
                 } else {
-                  var c: Cell = lambdaVar.asInstanceOf[Cell]
+                  var c = lambdaVar.asInstanceOf[Cell]
                   var done = false
                   while (!done) {
                     if (c.cdr == null) {
@@ -557,7 +525,7 @@ class Runtime {
         return obj
       }
     }
-    obj // TODO: correct?
+    obj
   }
 
   def prin1(obj: LispObject, stream: LispStream): LispObject = {
@@ -583,14 +551,10 @@ class Runtime {
     }
   }
   intern("symbols").value = new LispSubr("symbols") {
-    def apply(o: Array[LispObject]): LispObject = {
-      symbolContext.getSymbols
-    }
+    def apply(o: Array[LispObject]): LispObject = symbolContext.getSymbols
   }
   intern("gensym").value = new LispSubr("gensym") {
-    def apply(o: Array[LispObject]): LispObject = {
-      gensym
-    }
+    def apply(o: Array[LispObject]): LispObject = gensym
   }
   intern("make-runnable").value = new LispSubr("make-runnable", 1) {
     def apply(o: Array[LispObject]): LispObject = {

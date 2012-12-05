@@ -87,13 +87,14 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   def readQuotedSymbol() : Symbol = {
     try {
       tokenizer.useCharReadMode()
-      val sb = new StringBuilder()
       tokenizer.nextToken()
+      val sb = new java.lang.StringBuilder(1)
       while (tokenizer.ttype != '|' && tokenizer.ttype != StreamTokenizer.TT_EOF) {
         sb.append(tokenizer.buf(0))
         tokenizer.nextToken()
       }
-      if (sb.toString().equals("nil")) null else Symbol.intern(sb.toString());
+      val symStr = sb.toString
+      if (symStr.equals("nil")) null else Symbol.intern(symStr);
     } finally {
       tokenizer.useSExprSyntaxMode()
     }
