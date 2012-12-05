@@ -12,8 +12,6 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
     cdr
   }
 
-  def isEmpty() = car == null && cdr == null
-
   private final def hashCode(obj: LispObject): Int = {
     if ((obj == null)) 261835505 else if ((obj.isInstanceOf[Cell])) 1 + obj.hashCode else obj.hashCode
   }

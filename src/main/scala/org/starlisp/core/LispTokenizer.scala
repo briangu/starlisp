@@ -7,7 +7,7 @@ class LispDottedCdr(val obj: LispObject) extends LispObject {}
 class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispStream {
 
   def this(is: InputStream, os: OutputStream) {
-    this(if (is != null) new BufferedReader(new InputStreamReader(is, "UTF-8")) else null,
+    this(if (is != null) new InputStreamReader(is, "UTF-8") else null,
          if (os != null) new PrintWriter(os, true) else null)
   }
 

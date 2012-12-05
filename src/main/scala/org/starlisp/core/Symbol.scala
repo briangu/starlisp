@@ -1,13 +1,13 @@
 package org.starlisp.core
 
-import collection.mutable.HashMap
 import java.io.UnsupportedEncodingException
 
 class SymbolContext {
 
-  val index = new HashMap[String, Symbol]
+  val index = new java.util.HashMap[String, Symbol](1024)
 
   def getSymbols: Cell = {
+    import scala.collection.JavaConversions._
     var symbols: Cell = null
     index.foreach{ case (name, sym) =>
       symbols = new Cell(sym, symbols)
@@ -15,8 +15,8 @@ class SymbolContext {
     symbols
   }
 
-  def isInterned(sym: Symbol) = index.contains(sym.name)
-  def findSymbol(str: String) = index.getOrElse(str, null)
+  def isInterned(sym: Symbol) = index.containsKey(sym.name)
+  def findSymbol(str: String) = index.get(str)
 
   def intern(str: String): Symbol = intern(new Symbol(str))
   def intern(sym: Symbol): Symbol = Symbol.intern(this, sym)
@@ -59,7 +59,7 @@ object Symbol {
   def intern(context: SymbolContext, sym: Symbol): Symbol = {
     val sbl = context.findSymbol(sym.name)
     if (sbl == null) {
-      context.index(sym.name) = sym
+      context.index.put(sym.name, sym)
       sym
     } else {
       sbl

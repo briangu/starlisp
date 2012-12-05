@@ -54,6 +54,8 @@ object REPL {
     Starlisp.done = false
     runtime = new Runtime
 //    warmup(runtime)
+    System.gc()
+    Thread.sleep(500)
 
     var start : Long = 0
     var now: Long = 0

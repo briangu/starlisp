@@ -1,16 +1,17 @@
 package org.starlisp.core
 
 import collection.mutable
+import java.util.concurrent.atomic.AtomicInteger
 
 object Counters {
 
-  private val cache = new mutable.HashMap[String, Int]
+  private val cache = new mutable.HashMap[String, AtomicInteger]
 
   def inc(str: String) {
-    cache.put(str, cache.getOrElseUpdate(str, 0) + 1)
+    cache.getOrElseUpdate(str, new AtomicInteger()).incrementAndGet()
   }
 
   def report() {
-    cache.foreach{case (key, value) => println("%s -> %d".format(key, value))}
+    cache.foreach{case (key, value) => println("%s -> %d".format(key, value.get()))}
   }
 }

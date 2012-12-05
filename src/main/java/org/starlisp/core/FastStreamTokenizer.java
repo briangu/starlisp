@@ -56,7 +56,6 @@ public class FastStreamTokenizer {
   private int peekc = NEED_CHAR;
 
   private static final int NEED_CHAR = Integer.MAX_VALUE;
-  private static final int SKIP_LF = Integer.MAX_VALUE - 1;
 
   private byte resetCType[] = new byte[256];
   private byte setCType[] = new byte[256];
@@ -287,9 +286,11 @@ public class FastStreamTokenizer {
       ctype[ch] = CT_QUOTE;
   }
 
+  char[] cb = new char[1];
   /** Read the next character */
   private int read() throws IOException {
-    return reader.read();
+    int res = reader.read(cb, 0, 1);
+    return res >= 0 ? cb[0] : res;
   }
 
   /**
@@ -311,9 +312,6 @@ public class FastStreamTokenizer {
    * @see        java.io.StreamTokenizer#ttype
    */
   public int nextToken() throws IOException {
-    byte ct[] = ctype;
-    //sval = null;
-
     int c = peekc;
     if (c < 0 || c == NEED_CHAR) {
       c = read();
@@ -327,8 +325,8 @@ public class FastStreamTokenizer {
     */
     peekc = NEED_CHAR;
 
-    int ctype = c < 256 ? ct[c] : CT_ALPHA;
-    while ((ctype & CT_WHITESPACE) != 0) {
+    int chtype = c < 256 ? ctype[c] : CT_ALPHA;
+    while ((chtype & CT_WHITESPACE) != 0) {
       if (c == '\r') {
         c = read();
         if (c == '\n')
@@ -338,10 +336,10 @@ public class FastStreamTokenizer {
       }
       if (c < 0)
         return ttype = TT_EOF;
-      ctype = c < 256 ? ct[c] : CT_ALPHA;
+      chtype = c < 256 ? ctype[c] : CT_ALPHA;
     }
 
-    if ((ctype & CT_ALPHA) != 0) {
+    if ((chtype & CT_ALPHA) != 0) {
       bufLimit = 0;
       do {
 /*
@@ -351,14 +349,14 @@ public class FastStreamTokenizer {
 */
         buf[bufLimit++] = (char) c;
         c = read();
-        ctype = c < 0 ? CT_WHITESPACE : c < 256 ? ct[c] : CT_ALPHA;
-      } while ((ctype & (CT_ALPHA)) != 0);
+        chtype = c < 0 ? CT_WHITESPACE : c < 256 ? ctype[c] : CT_ALPHA;
+      } while ((chtype & (CT_ALPHA)) != 0);
       peekc = c;
       //sval = String.copyValueOf(buf, 0, i);
       return ttype = TT_WORD;
     }
 
-    if ((ctype & CT_QUOTE) != 0) {
+    if ((chtype & CT_QUOTE) != 0) {
       ttype = c;
       bufLimit = 0;
       /* Invariants (because \Octal needs a lookahead):
@@ -387,7 +385,7 @@ public class FastStreamTokenizer {
       return ttype;
     }
 
-    if ((ctype & CT_COMMENT) != 0) {
+    if ((chtype & CT_COMMENT) != 0) {
       while ((c = read()) != '\n' && c != '\r' && c >= 0);
       peekc = c;
       return nextToken();
