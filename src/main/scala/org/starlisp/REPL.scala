@@ -24,12 +24,12 @@ object REPL {
 
   def warmupParser(runtime: Runtime) {
     var sum: Long = 0
-    (0 until 100000).foreach { idx =>
+    (0 until 1000000).foreach { idx =>
       val start = System.currentTimeMillis()
       Starlisp.read(new LispStreamImpl(new StringBufferInputStream(fixed), null))
       sum += System.currentTimeMillis() - start
     }
-    println("\n\t time = %d %f".format(sum, (sum / 100000.0)))
+    println("\n\t time = %d %f".format(sum, (sum / 1000000.0)))
   }
 
   def warmup2(runtime: Runtime) {
@@ -48,7 +48,7 @@ object REPL {
 
   def main(args: Array[String]) {
     var runtime = new Runtime
-//    warmupParser(runtime)
+    warmupParser(runtime)
     warmup(runtime)
     warmup2(runtime)
     Starlisp.done = false
