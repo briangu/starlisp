@@ -2,8 +2,6 @@ package org.starlisp.core
 
 import java.io._
 
-class LispDottedCdr(var obj: LispObject = null) extends LispObject {}
-
 class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispStream {
 
   def this(is: InputStream, os: OutputStream) {
@@ -21,6 +19,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
     tok.ordinaryChar(')')
     tok.ordinaryChar('\'')
     tok.ordinaryChar('#')
+    tok.ordinaryChar('|')
     tok.commentChar(';')
     tok.quoteChar('"')
     tok
@@ -69,6 +68,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   }
 
   case class ListEnd() extends LispObject
+  class LispDottedCdr(var obj: LispObject = null) extends LispObject {}
 
   private val listEnd = new ListEnd
   private val dottedCdr = new LispDottedCdr
@@ -107,6 +107,21 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
     }
   }
 
+  def readQuotedSymbol() : Symbol = {
+    try {
+      resetSyntax()
+      val sb = new StringBuilder()
+      tokenizer.nextToken()
+      while (tokenizer.ttype != '|' && tokenizer.ttype != StreamTokenizer.TT_EOF) {
+        sb.append(tokenizer.buf(0))
+        tokenizer.nextToken()
+      }
+      if (sb.toString().equals("nil")) null else Symbol.intern(sb.toString());
+    } finally {
+      setSyntax()
+    }
+  }
+
   def read() : LispObject = {
      next match {
       case '(' => readList()
@@ -115,6 +130,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
       case '\'' => new Cell(Symbol.quote, new Cell(read, null))
       case '"' => new LispString(tokenizer.buf, tokenizer.bufLimit)
       case '#' => dispatch()
+      case '|' => readQuotedSymbol()
       case StreamTokenizer.TT_EOF => null
       case ttype => throw new RuntimeException("unhandled type: " + ttype)
     }

@@ -4,34 +4,9 @@ import java.io.IOException;
 import java.io.Reader;
 
 /**
- * The <code>StreamTokenizer</code> class takes an input stream and
- * parses it into "tokens", allowing the tokens to be
- * read one at a time. The parsing process is controlled by a table
- * and a number of flags that can be set to various states. The
- * stream tokenizer can recognize identifiers, numbers, quoted
- * strings, and various comment styles.
- * <p>
- * Each byte read from the input stream is regarded as a character
- * in the range <code>'&#92;u0000'</code> through <code>'&#92;u00FF'</code>.
- * The character value is used to look up five possible attributes of
- * the character: <i>white space</i>, <i>alphabetic</i>,
- * <i>numeric</i>, <i>string quote</i>, and <i>comment character</i>.
- * Each character can have zero or more of these attributes.
- * <p>
- * In addition, an instance has four flags. These flags indicate:
- * <ul>
- * <li>Whether line terminators are to be returned as tokens or treated
- *     as white space that merely separates tokens.
- * <li>Whether C-style comments are to be recognized and skipped.
- * <li>Whether C++-style comments are to be recognized and skipped.
- * <li>Whether the characters of identifiers are converted to lowercase.
- * </ul>
- * <p>
- * A typical application first constructs an instance of this class,
- * sets up the syntax tables, and then repeatedly loops calling the
- * <code>nextToken</code> method in each iteration of the loop until
- * it returns the value <code>TT_EOF</code>.
+ * Based on jdk's StreamTokenizer (a heavily stripped down version)
  *
+ * @author  Brian Guarraci
  * @author  James Gosling
  * @see     java.io.StreamTokenizer#nextToken()
  * @see     java.io.StreamTokenizer#TT_EOF
@@ -40,8 +15,9 @@ import java.io.Reader;
 
 public class FastStreamTokenizer {
 
-  /* Only one of these will be non-null */
   private Reader reader = null;
+
+  char[] cb = new char[1];
 
   char buf[] = new char[1024];
   int bufLimit = -1;
@@ -60,6 +36,7 @@ public class FastStreamTokenizer {
   private byte resetCType[] = new byte[256];
   private byte setCType[] = new byte[256];
   private byte ctype[] = setCType;
+
   private static final byte CT_WHITESPACE = 1;
   private static final byte CT_ALPHA = 4;
   private static final byte CT_QUOTE = 8;
@@ -117,25 +94,6 @@ public class FastStreamTokenizer {
   * made available as the part of the API in a future release.
   */
   private static final int TT_NOTHING = -4;
-
-  /**
-   * If the current token is a word token, this field contains a
-   * string giving the characters of the word token. When the current
-   * token is a quoted string token, this field contains the body of
-   * the string.
-   * <p>
-   * The current token is a word when the value of the
-   * <code>ttype</code> field is <code>TT_WORD</code>. The current token is
-   * a quoted string token when the value of the <code>ttype</code> field is
-   * a quote character.
-   * <p>
-   * The initial value of this field is null.
-   *
-   * @see     java.io.StreamTokenizer#quoteChar(int)
-   * @see     java.io.StreamTokenizer#TT_WORD
-   * @see     java.io.StreamTokenizer#ttype
-   */
-//  public String sval;
 
   /**
    * Create a tokenizer that parses the given character stream.
@@ -286,7 +244,6 @@ public class FastStreamTokenizer {
       ctype[ch] = CT_QUOTE;
   }
 
-  char[] cb = new char[1];
   /** Read the next character */
   private int read() throws IOException {
     int res = reader.read(cb, 0, 1);
@@ -327,6 +284,7 @@ public class FastStreamTokenizer {
 
     int chtype = c < 256 ? ctype[c] : CT_ALPHA;
     while ((chtype & CT_WHITESPACE) != 0) {
+/*
       if (c == '\r') {
         c = read();
         if (c == '\n')
@@ -334,6 +292,8 @@ public class FastStreamTokenizer {
       } else {
         c = read();
       }
+*/
+      c = read();
       if (c < 0)
         return ttype = TT_EOF;
       chtype = c < 256 ? ctype[c] : CT_ALPHA;
@@ -352,7 +312,6 @@ public class FastStreamTokenizer {
         chtype = c < 0 ? CT_WHITESPACE : c < 256 ? ctype[c] : CT_ALPHA;
       } while ((chtype & (CT_ALPHA)) != 0);
       peekc = c;
-      //sval = String.copyValueOf(buf, 0, i);
       return ttype = TT_WORD;
     }
 
@@ -366,7 +325,7 @@ public class FastStreamTokenizer {
       int d = read();
 //      while (d >= 0 && d != ttype && d != '\n' && d != '\r') {
       while (d >= 0 && d != ttype) {
-          c = d;
+        c = d;
         d = read();
 /*
         if (i >= buf.length) {
@@ -382,7 +341,6 @@ public class FastStreamTokenizer {
       */
       peekc = (d == ttype) ? NEED_CHAR : d;
 
-      //sval = String.copyValueOf(buf, 0, i);
       return ttype;
     }
 
