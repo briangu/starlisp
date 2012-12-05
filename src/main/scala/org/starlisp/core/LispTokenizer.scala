@@ -9,30 +9,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
          if (os != null) new PrintWriter(os, true) else null)
   }
 
-  val tokenizer : FastStreamTokenizer = if (in != null) {
-    val tok = new FastStreamTokenizer(in)
-    tok.useSetSyntax()
-    tok.resetSyntax()
-    tok.whitespaceChars(0, ' ')
-    tok.wordChars(' '+1,255)
-    tok.ordinaryChar('(')
-    tok.ordinaryChar(')')
-    tok.ordinaryChar('\'')
-    tok.ordinaryChar('#')
-    tok.ordinaryChar('|')
-    tok.commentChar(';')
-    tok.quoteChar('"')
-    tok
-  } else {
-    null
-  }
-
-  private def resetSyntax() = {
-    tokenizer.useClearSyntax()
-  }
-  private def setSyntax(tok: FastStreamTokenizer = tokenizer) {
-    tokenizer.useSetSyntax()
-  }
+  val tokenizer = if (in != null) new FastStreamTokenizer(in) else null
 
   def next() : Int = {
     try {
@@ -43,11 +20,11 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   }
 
   private def dispatch() : LispObject = {
-    resetSyntax()
+    tokenizer.useCharReadMode()
     try {
       tokenizer.nextToken match {
         case ';' => {
-          setSyntax()
+          tokenizer.useSExprSyntaxMode()
           read() // skip next s-exp
           null
         }
@@ -63,7 +40,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
         }
       }
     } finally {
-      setSyntax()
+      tokenizer.useSExprSyntaxMode()
     }
   }
 
@@ -109,7 +86,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
 
   def readQuotedSymbol() : Symbol = {
     try {
-      resetSyntax()
+      tokenizer.useCharReadMode()
       val sb = new StringBuilder()
       tokenizer.nextToken()
       while (tokenizer.ttype != '|' && tokenizer.ttype != StreamTokenizer.TT_EOF) {
@@ -118,7 +95,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
       }
       if (sb.toString().equals("nil")) null else Symbol.intern(sb.toString());
     } finally {
-      setSyntax()
+      tokenizer.useSExprSyntaxMode()
     }
   }
 

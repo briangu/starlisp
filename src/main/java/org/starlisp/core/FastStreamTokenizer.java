@@ -42,11 +42,11 @@ public class FastStreamTokenizer {
   private static final byte CT_QUOTE = 8;
   private static final byte CT_COMMENT = 16;
 
-  public void useSetSyntax() {
+  public void useSExprSyntaxMode() {
     ctype = setCType;
   }
 
-  public void useClearSyntax() {
+  public void useCharReadMode() {
     ctype = resetCType;
   }
 
@@ -95,6 +95,19 @@ public class FastStreamTokenizer {
   */
   private static final int TT_NOTHING = -4;
 
+  private FastStreamTokenizer() {
+    useSExprSyntaxMode();
+    whitespaceChars(0, ' ');
+    wordChars(' '+1,255);
+    ordinaryChar('(');
+    ordinaryChar(')');
+    ordinaryChar('\'') ;
+    ordinaryChar('#');
+    ordinaryChar('|');
+    commentChar(';');
+    quoteChar('"');
+  }
+
   /**
    * Create a tokenizer that parses the given character stream.
    *
@@ -102,6 +115,7 @@ public class FastStreamTokenizer {
    * @since   JDK1.1
    */
   public FastStreamTokenizer(Reader r) {
+    this();
     if (r == null) {
       throw new NullPointerException();
     }
@@ -325,14 +339,13 @@ public class FastStreamTokenizer {
       int d = read();
 //      while (d >= 0 && d != ttype && d != '\n' && d != '\r') {
       while (d >= 0 && d != ttype) {
-        c = d;
-        d = read();
 /*
         if (i >= buf.length) {
           buf = Arrays.copyOf(buf, buf.length * 2);
         }
 */
-        buf[bufLimit++] = (char)c;
+        buf[bufLimit++] = (char)d;
+        d = read();
       }
 
       /* If we broke out of the loop because we found a matching quote
