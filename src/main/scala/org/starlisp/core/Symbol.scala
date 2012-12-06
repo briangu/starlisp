@@ -71,7 +71,7 @@ class Symbol(var name: String = null) extends LispObject {
 
   var value: LispObject = null
 
-  override def toString = {
-    if (Symbol.isInterned(this)) "#:" + this.name else this.name
-  }
+  override def toString = if (Symbol.isInterned(this)) "#:" + this.name else this.name
+  override def hashCode() = name.hashCode
+  override def equals(obj: Any) = name.equals(obj)
 }

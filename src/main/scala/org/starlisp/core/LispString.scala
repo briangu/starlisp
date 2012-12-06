@@ -4,7 +4,6 @@ class LispString(length: Int) extends LispArray(length) {
 
   def this(arr: String) = {
     this(arr.length)
-    Counters.inc("lispstring:str:create")
     // TODO: use OBJLIST
     (0 until length).foreach(idx => ar(idx) = LispChar.create(arr.charAt(idx)))
   }

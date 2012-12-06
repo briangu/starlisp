@@ -60,7 +60,7 @@ public final class LispFlonum extends LispNumber {
   }
 
   public String toString() {
-    return "" + n;
+    return String.valueOf(n);
   }
 
   public int toJavaInt() {

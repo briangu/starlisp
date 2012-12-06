@@ -2,14 +2,30 @@ package org.starlisp.core
 
 import java.io._
 
-class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispStream {
+class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispInputStream {
+
+  case class ListEnd() extends LispObject
+  class LispDottedCdr(var obj: LispObject = null) extends LispObject {}
+
+  val tokenizer = if (in != null) new FastStreamTokenizer(in) else null
+
+  private val listEnd = new ListEnd
+  private val dottedCdr = new LispDottedCdr
+
+  private var atEOF = false
 
   def this(is: InputStream, os: OutputStream) {
     this(if (is != null) new InputStreamReader(is, "UTF-8") else null,
          if (os != null) new PrintWriter(os, true) else null)
   }
 
-  val tokenizer = if (in != null) new FastStreamTokenizer(in) else null
+  def eof() = atEOF
+  def readChar() = throw new UnsupportedOperationException
+  def close(): Boolean = {
+    in.close()
+    atEOF = true
+    true
+  }
 
   def next() : Int = {
     try {
@@ -33,41 +49,34 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
           LispChar.create(tokenizer.ttype.asInstanceOf[Char])
         }
         case '(' => {
-          new LispArray(readList().asInstanceOf[Cell]) // TODO: add list check
+          tokenizer.useSExprSyntaxMode()
+          new LispArray(readList().asInstanceOf[Cell])
         }
-        case ch => {
-          throw new LispException("dispatch syntax error.")
-        }
+        case ch => throw new LispException("dispatch syntax error for: " + String.valueOf(ch))
       }
     } finally {
       tokenizer.useSExprSyntaxMode()
     }
   }
 
-  case class ListEnd() extends LispObject
-  class LispDottedCdr(var obj: LispObject = null) extends LispObject {}
-
-  private val listEnd = new ListEnd
-  private val dottedCdr = new LispDottedCdr
-
   def readList() : LispObject = {
     var obj = read()
-    if (obj == listEnd) {
+    if (obj eq listEnd) {
       null
     } else {
       var cell = new Cell(obj)
       val list = cell
       obj = read()
-      if (obj != listEnd) {
+      if (obj ne listEnd) {
         do {
-          if (obj.isInstanceOf[LispDottedCdr]) {
-            cell.cdr = obj.asInstanceOf[LispDottedCdr].obj
+          if (obj eq dottedCdr) {
+            cell.cdr = dottedCdr.obj
           } else {
             cell.cdr = new Cell(obj)
             cell = cell.cdr.asInstanceOf[Cell]
           }
           obj = read
-        } while (obj != listEnd)
+        } while (obj ne listEnd)
       }
       list
     }
@@ -75,7 +84,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
 
   def readWord() : LispObject = {
     val str = String.copyValueOf(tokenizer.buf, 0, tokenizer.bufLimit)
-    if (str.equals(".")) {
+    if (str.length == 1 && str.equals(".")) {
       dottedCdr.obj = read
       dottedCdr
     } else {
@@ -85,8 +94,8 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
   }
 
   def readQuotedSymbol() : Symbol = {
+    tokenizer.useCharReadMode()
     try {
-      tokenizer.useCharReadMode()
       tokenizer.nextToken()
       val sb = new java.lang.StringBuilder(1)
       while (tokenizer.ttype != '|' && tokenizer.ttype != StreamTokenizer.TT_EOF) {
@@ -109,18 +118,11 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispSt
       case '"' => new LispString(tokenizer.buf, tokenizer.bufLimit)
       case '#' => dispatch()
       case '|' => readQuotedSymbol()
-      case StreamTokenizer.TT_EOF => null
-      case ttype => throw new RuntimeException("unhandled type: " + ttype)
+      case StreamTokenizer.TT_EOF => {
+        atEOF = true
+        null
+      }
+      case ttype => throw new RuntimeException("unhandled type: " + ttype.asInstanceOf[Char])
     }
   }
-
-  def writeJavaString(str: String) {}
-
-  def writeJavaChar(ch: Char) {}
-
-  def eof() = false
-
-  def close() = false
-
-  def readChar() = null
 }

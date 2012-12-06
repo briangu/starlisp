@@ -14,7 +14,6 @@ object LispChar {
     if (ch <= 255) {
       lowCache(ch)
     } else {
-      Counters.inc("lispchar::create")
       cache.getOrElseUpdate(ch, new LispChar(ch))
     }
   }

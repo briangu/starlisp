@@ -21,14 +21,14 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   }
 
   private final def equals(a: LispObject, b: LispObject): Boolean = {
-    if ((a == null)) b == null else (a == b)
+    if (a == null) b == null else (a == b)
   }
 
   override def equals(obj: Any): Boolean = {
     if (obj == null) {
       (car == null && cdr == null)
     } else {
-      if ((obj.isInstanceOf[Cell])) equals((obj.asInstanceOf[Cell]).car, car) && equals((obj.asInstanceOf[Cell]).cdr, cdr) else false
+      if (obj.isInstanceOf[Cell]) equals(obj.asInstanceOf[Cell].car, car) && equals(obj.asInstanceOf[Cell].cdr, cdr) else false
     }
   }
 

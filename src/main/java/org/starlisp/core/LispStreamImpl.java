@@ -13,7 +13,7 @@ import java.util.Stack;
 // FIXME: Doesn't terminate properly on EOF when reading symbols and other stuffs
 /* The stream class used throughout. Can be input or output stream, optionally at the same time but points aren't synchronized so I advice against */
 // THIS READER REALLY REALLY SUCKS SERIOUSLY HOW COULD I EVEN WRITE IT THIS BAD?
-public class LispStreamImpl extends LispObject implements LispStream {
+public class LispStreamImpl extends LispObject implements LispInputStream, LispOutputStream {
   public final Reader in;
   public final PrintWriter out;
   private static final Symbol readerError = Symbol$.MODULE$.intern("reader-error");
@@ -44,7 +44,7 @@ public class LispStreamImpl extends LispObject implements LispStream {
     } else return false;
   }
 
-  public void writeJavaString(String str) {
+  public void write(String str) {
     out.print(str);
     out.flush();
   } // Throws NullPointerException when not output stream FIXME?
@@ -57,7 +57,7 @@ public class LispStreamImpl extends LispObject implements LispStream {
     return eof;
   }
 
-  public void writeJavaChar(char ch) throws IOException {
+  public void write(char ch) throws IOException {
     out.print(ch);
     if (ch == '\n') out.flush();
   }

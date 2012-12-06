@@ -29,9 +29,9 @@ object Starlisp {
   def prin1(obj: LispObject, stream: LispStream): LispObject = {
     val s = if ((stream != null)) stream else Symbol.standardOutput.value
     if (obj != null) {
-      s.asInstanceOf[LispStream].writeJavaString(obj.toString)
+      s.asInstanceOf[LispOutputStream].write(obj.toString)
     } else {
-      s.asInstanceOf[LispStream].writeJavaString("nil")
+      s.asInstanceOf[LispOutputStream].write("nil")
     }
     obj
   }
@@ -43,15 +43,15 @@ object Starlisp {
   def eq(obj1: LispObject, obj2: LispObject): LispObject = if (obj1 eq obj2) Symbol.t else null
 
   def read(stream: LispStream): LispObject = {
-    (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispStream].read
+    (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispInputStream].read
   }
 
   def readChar(stream: LispStream): LispChar = {
-    (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispStream].readChar
+    (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispInputStream].readChar
   }
 
   def writeChar(ch: LispChar, stream: LispStream): LispChar = {
-    (if (stream != null) stream else Symbol.standardOutput.value).asInstanceOf[LispStream].writeJavaChar(ch.ch)
+    (if (stream != null) stream else Symbol.standardOutput.value).asInstanceOf[LispOutputStream].write(ch.ch)
     ch
   }
 
@@ -99,7 +99,7 @@ object Starlisp {
   }
   intern("prin1").value = new LispSubr("prin1", 1, 2) {
     def apply(o: Array[LispObject]): LispObject = {
-      prin1(o(0), if ((o.length > 1)) o(1).asInstanceOf[LispStream] else null)
+      prin1(o(0), if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null)
     }
   }
   intern("eq?").value = new LispSubr("eq?", 2) {
@@ -199,9 +199,8 @@ object Starlisp {
   intern("read-char").value = new LispSubr("read-char", 0, 1) {
     def apply(o: Array[LispObject]): LispObject = {
       try {
-        readChar(if ((o.length > 0)) o(0).asInstanceOf[LispStream] else null)
-      }
-      catch {
+        readChar(if ((o.length > 0)) o(0).asInstanceOf[LispInputStream] else null)
+      } catch {
         case e: IOException => {
           throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
         }
@@ -211,9 +210,8 @@ object Starlisp {
   intern("write-char").value = new LispSubr("write-char", 1, 2) {
     def apply(o: Array[LispObject]): LispObject = {
       try {
-        writeChar(o(0).asInstanceOf[LispChar], (if ((o.length > 1)) o(1).asInstanceOf[LispStream] else null))
-      }
-      catch {
+        writeChar(o(0).asInstanceOf[LispChar], (if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null))
+      } catch {
         case e: IOException => {
           throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
         }
@@ -223,9 +221,8 @@ object Starlisp {
   intern("read").value = new LispSubr("read", 0, 1) {
     def apply(o: Array[LispObject]): LispObject = {
       try {
-        read(if ((o.length > 0)) o(0).asInstanceOf[LispStream] else null)
-      }
-      catch {
+        read(if ((o.length > 0)) o(0).asInstanceOf[LispInputStream] else null)
+      } catch {
         case e: IOException => {
           throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
         }
@@ -238,8 +235,7 @@ object Starlisp {
         if (o(1) eq Symbol.in) return new LispStreamImpl(new FileReader((o(0).asInstanceOf[LispString]).toJavaString), null)
         if (o(1) eq Symbol.out) return new LispStreamImpl(null, new PrintWriter(new FileWriter((o(0).asInstanceOf[LispString]).toJavaString)))
         throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
-      }
-      catch {
+      } catch {
         case e: IOException => {
           throw new LispException(Symbol.internalError, e)
         }
@@ -250,8 +246,7 @@ object Starlisp {
     def apply(o: Array[LispObject]): LispObject = {
       try {
         if ((o(0).asInstanceOf[LispStream]).close) Symbol.t else null
-      }
-      catch {
+      } catch {
         case e: IOException => {
           throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
         }
@@ -371,10 +366,10 @@ class Runtime {
   private val symbolContext = Symbol.cloneSymbols
 
   // Runtime specific stack and components
-  private val DEFAULT_STACK_SIZE: Int = 32768 * 2
-  private var stackSize: Int = 0
+  private val DEFAULT_STACK_SIZE = 32768 * 2
+  private var stackSize = 0
   private val stack = new Array[LispObject](DEFAULT_STACK_SIZE)
-  private var genSymCounter: Long = 0
+  private var genSymCounter = 0L
 
   private def intern(str: String) = symbolContext.intern(str)
 
@@ -453,8 +448,7 @@ class Runtime {
     while (true) {
       if (obj.isInstanceOf[Symbol]) {
         return (obj.asInstanceOf[Symbol]).value
-      }
-      else if (obj.isInstanceOf[Cell]) {
+      } else if (obj.isInstanceOf[Cell]) {
         val list = obj.asInstanceOf[Cell]
         if (list.car eq Symbol._if) {
           val res = evalHead((list.cdr.asInstanceOf[Cell]).car)
@@ -465,14 +459,14 @@ class Runtime {
           } else {
             return null
           }
-        } else if (list.car == Symbol.quote) {
+        } else if (list.car eq Symbol.quote) {
           return (list.cdr.asInstanceOf[Cell]).car
-        } else if (list.car == Symbol.lambda || list.car == Symbol.`macro`) {
+        } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
           return list
         } else {
           val first = evalHead(list.car)
           if (first.isInstanceOf[Cell]) {
-            val f1rst: Cell = first.asInstanceOf[Cell]
+            val f1rst = first.asInstanceOf[Cell]
             if (f1rst.car eq Symbol.lambda) {
               val lambdaVar = (f1rst.cdr.asInstanceOf[Cell]).car
               var lambdaBody = (f1rst.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]
@@ -511,14 +505,17 @@ class Runtime {
               obj = lambdaBody.car
             } else if (f1rst.car eq Symbol.`macro`) {
               obj = evalHead(cons(cons(Symbol.lambda, f1rst.cdr.asInstanceOf[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
-            }
-            else {
+            } else {
               throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
             }
           } else if (first.isInstanceOf[Procedure]) {
             return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.cdr.asInstanceOf[Cell]))
           } else {
-            throw new LispException(Symbol.internalError, "internal error: " + Starlisp.toStringOrNull(obj))
+            throw new LispException(
+              Symbol.internalError,
+              "EVAL: %s is not a function name; try using a symbol instead. EXPR: %s".format(
+                String.valueOf(first),
+                Starlisp.toStringOrNull(obj)))
           }
         }
       } else {
@@ -531,9 +528,9 @@ class Runtime {
   def prin1(obj: LispObject, stream: LispStream): LispObject = {
     val s = if ((stream != null)) stream else Symbol.standardOutput.value
     if (obj != null) {
-      s.asInstanceOf[LispStream].writeJavaString(obj.toString)
+      s.asInstanceOf[LispOutputStream].write(obj.toString)
     } else {
-      s.asInstanceOf[LispStream].writeJavaString("nil")
+      s.asInstanceOf[LispOutputStream].write("nil")
     }
     obj
   }
@@ -546,9 +543,7 @@ class Runtime {
 
   // Initialize the Runtime-specific methods
   intern("eval").value = new LispSubr("eval", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      eval(o(0))
-    }
+    def apply(o: Array[LispObject]): LispObject = eval(o(0))
   }
   intern("symbols").value = new LispSubr("symbols") {
     def apply(o: Array[LispObject]): LispObject = symbolContext.getSymbols
