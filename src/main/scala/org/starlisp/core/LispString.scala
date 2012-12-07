@@ -25,7 +25,7 @@ class LispString(length: Int) extends LispArray(length) {
 
   override def aset(idx: Int, obj: LispObject): LispObject = {
     if (!(obj.isInstanceOf[LispChar])) throw new LispException(Symbol.internalError, "Only Char may be in a string.")
-    return super.aset(idx, obj)
+    super.aset(idx, obj)
   }
 
   def toJavaString: String = {
@@ -34,7 +34,5 @@ class LispString(length: Int) extends LispArray(length) {
     sb.toString
   }
 
-  override def toString: String = {
-    return '"' + toJavaString + '"'
-  }
+  override def toString: String = "\"%s\"".format(toJavaString)
 }

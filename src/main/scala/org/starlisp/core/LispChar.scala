@@ -20,16 +20,9 @@ object LispChar {
 }
 
 class LispChar(val ch: Char = 0) extends LispObject {
-
-  override def hashCode: Int = {
-    return ch.hashCode
-  }
-
+  override def hashCode: Int = ch.hashCode
   override def equals(obj: Any): Boolean = {
-    return if ((obj.isInstanceOf[LispChar])) (obj.asInstanceOf[LispChar]).ch == ch else false
+    if ((obj.isInstanceOf[LispChar])) (obj.asInstanceOf[LispChar]).ch == ch else false
   }
-
-  override def toString: String = {
-    return "#\\" + ch
-  }
+  override def toString: String = "#\\%c".format(ch)
 }

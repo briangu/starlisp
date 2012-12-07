@@ -45,6 +45,8 @@ object MicroBenchmark {
     var runtime = new Runtime
 
     warmup(runtime)
+    warmup(runtime)
+    warmup(runtime)
     warmup2(runtime)
     Starlisp.done = false
     runtime = new Runtime

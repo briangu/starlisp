@@ -221,7 +221,7 @@ public class LispStreamImpl extends LispObject implements LispInputStream, LispO
         this.unreadJavaChar(ch);
         String str = sb.toString();
         if (LispNumber.isNumber(str))          // Is a number
-          return LispNumber.parse(str);
+          return LispNumber.tryParse(str);
         else // Is a symbol: Funnyness since nil not separated from java null (early bad decision)
 //          return str.equals("nil") ? null : Symbol$.MODULE$.intern(str);
           return Symbol$.MODULE$.intern(str);

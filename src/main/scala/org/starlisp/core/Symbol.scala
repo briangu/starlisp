@@ -51,11 +51,10 @@ object Symbol {
   // TODO: actually clone
   def cloneSymbols() : SymbolContext = context
 
-  def intern(sym: Symbol) : Symbol = intern(context, sym)
-  def intern(str: String) : Symbol = intern(new Symbol(str))
-
   def isInterned(sym: Symbol) = context.isInterned(sym)
 
+  def intern(sym: Symbol) : Symbol = intern(context, sym)
+  def intern(str: String) : Symbol = intern(new Symbol(str))
   def intern(context: SymbolContext, sym: Symbol): Symbol = {
     val sbl = context.findSymbol(sym.name)
     if (sbl == null) {

@@ -27,7 +27,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
     true
   }
 
-  def next() : Int = {
+  def next(): Int = {
     try {
       tokenizer.nextToken()
     } catch {
@@ -35,7 +35,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
     }
   }
 
-  private def dispatch() : LispObject = {
+  private def dispatch(): LispObject = {
     tokenizer.useCharReadMode()
     try {
       tokenizer.nextToken match {
@@ -52,6 +52,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
           tokenizer.useSExprSyntaxMode()
           new LispArray(readList().asInstanceOf[Cell])
         }
+        case '\'' => read()
         case ch => throw new LispException("dispatch syntax error for: " + String.valueOf(ch))
       }
     } finally {
@@ -59,7 +60,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
     }
   }
 
-  def readList() : LispObject = {
+  def readList(): LispObject = {
     var obj = read()
     if (obj eq listEnd) {
       null
@@ -75,25 +76,25 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
             cell.cdr = new Cell(obj)
             cell = cell.cdr.asInstanceOf[Cell]
           }
-          obj = read
+          obj = read()
         } while (obj ne listEnd)
       }
       list
     }
   }
 
-  def readWord() : LispObject = {
+  def readWord(): LispObject = {
     val str = String.copyValueOf(tokenizer.buf, 0, tokenizer.bufLimit)
     if (str.length == 1 && str.equals(".")) {
       dottedCdr.obj = read
       dottedCdr
     } else {
       // TODO: make more efficient
-      if (LispNumber.isNumber(str)) LispNumber.parse(str) else Symbol.intern(str)
+      if (LispNumber.isNumber(str)) LispNumber.tryParse(str) else Symbol.intern(str)
     }
   }
 
-  def readQuotedSymbol() : Symbol = {
+  def readQuotedSymbol(): Symbol = {
     tokenizer.useCharReadMode()
     try {
       tokenizer.nextToken()
@@ -109,12 +110,12 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
     }
   }
 
-  def read() : LispObject = {
+  def read(): LispObject = {
      next match {
       case '(' => readList()
       case StreamTokenizer.TT_WORD => readWord()
       case ')' => listEnd
-      case '\'' => new Cell(Symbol.quote, new Cell(read, null))
+      case '\'' => new Cell(Symbol.quote, new Cell(read(), null))
       case '"' => new LispString(tokenizer.buf, tokenizer.bufLimit)
       case '#' => dispatch()
       case '|' => readQuotedSymbol()
