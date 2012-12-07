@@ -36,27 +36,15 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
   }
 
   private def dispatch(): LispObject = {
-    tokenizer.useCharReadMode()
-    try {
-      tokenizer.nextToken match {
-        case ';' => {
-          tokenizer.useSExprSyntaxMode()
-          read() // skip next s-exp
-          null
-        }
-        case '\\' => {
-          tokenizer.nextToken()
-          LispChar.create(tokenizer.ttype.asInstanceOf[Char])
-        }
-        case '(' => {
-          tokenizer.useSExprSyntaxMode()
-          new LispArray(readList().asInstanceOf[Cell])
-        }
-        case '\'' => read()
-        case ch => throw new LispException("dispatch syntax error for: " + String.valueOf(ch))
+    tokenizer.readChar() match {
+      case ';' => {
+        read() // skip next s-exp
+        null
       }
-    } finally {
-      tokenizer.useSExprSyntaxMode()
+      case '\\' => LispChar.create(tokenizer.readChar())
+      case '(' => new LispArray(readList().asInstanceOf[Cell])
+      case '\'' => read()
+      case ch => throw new LispException("dispatch syntax error for: " + String.valueOf(ch))
     }
   }
 

@@ -50,6 +50,20 @@ public class FastStreamTokenizer {
     ctype = resetCType;
   }
 
+  public char readChar() {
+    byte[] current = ctype;
+    char ch;
+    try {
+      useCharReadMode();
+      ch = (char) nextToken();
+    } catch (IOException e) {
+      ch = (char)-1;
+    } finally {
+      ctype = current;
+    }
+    return ch;
+  }
+
   /**
    * After a call to the <code>nextToken</code> method, this field
    * contains the type of the token just read. For a single character
