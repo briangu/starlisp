@@ -12,18 +12,15 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
   private val listEnd = new ListEnd
   private val dottedCdr = new LispDottedCdr
 
-  private var atEOF = false
-
   def this(is: InputStream, os: OutputStream) {
     this(if (is != null) new InputStreamReader(is, "UTF-8") else null,
          if (os != null) new PrintWriter(os, true) else null)
   }
 
-  def eof() = atEOF
+  def eof() = tokenizer.ttype == StreamTokenizer.TT_EOF
   def readChar() = throw new UnsupportedOperationException
   def close(): Boolean = {
     in.close()
-    atEOF = true
     true
   }
 
@@ -107,10 +104,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
       case '"' => new LispString(tokenizer.buf, tokenizer.bufLimit)
       case '#' => dispatch()
       case '|' => readQuotedSymbol()
-      case StreamTokenizer.TT_EOF => {
-        atEOF = true
-        null
-      }
+      case StreamTokenizer.TT_EOF => null
       case ttype => throw new RuntimeException("unhandled type: " + ttype.asInstanceOf[Char])
     }
   }

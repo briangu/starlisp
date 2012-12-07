@@ -32,6 +32,8 @@ class LispBignum(val n: BigInteger) extends LispInteger {
   def mul(nbr: LispBignum): LispBignum = new LispBignum(n.multiply(nbr.n))
   def div(nbr: LispBignum): LispNumber = new LispBignum(n.divide(nbr.n))
   def mod(nbr: LispBignum): LispBignum = new LispBignum(n.remainder(nbr.n))
+  def ash(nbr: LispInteger): LispInteger = new LispBignum(n.shiftLeft(nbr.toJavaInt))
+  def negP: Boolean = n.signum == -1
 
   def add(nbr: LispNumber): LispNumber = {
     if ((nbr.isInstanceOf[LispFlonum])) (new LispFlonum(n.doubleValue)).add(nbr.asInstanceOf[LispFlonum]) else if ((nbr.isInstanceOf[LispFixnum])) add(coerceFixnumToBignum(nbr)) else add(nbr.asInstanceOf[LispBignum])
@@ -52,9 +54,6 @@ class LispBignum(val n: BigInteger) extends LispInteger {
   def mod(nbr: LispInteger): LispInteger = {
     if ((nbr.isInstanceOf[LispFixnum])) mod(coerceFixnumToBignum(nbr)) else mod(nbr.asInstanceOf[LispBignum])
   }
-
-  def ash(nbr: LispInteger): LispInteger = new LispBignum(n.shiftLeft(nbr.toJavaInt))
-  def negP: Boolean = n.signum == -1
 
   override def toString: String = n.toString
 

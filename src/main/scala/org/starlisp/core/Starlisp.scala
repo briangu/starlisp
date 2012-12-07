@@ -53,8 +53,6 @@ object Starlisp {
     ch
   }
 
-  private def symbolValue(sbl: Symbol): LispObject = sbl.value
-
   private def atom(obj: LispObject): LispObject = if ((obj.isInstanceOf[Cell])) null else Symbol.t
 
   private def eql(a: LispObject, b: LispObject): LispObject = {
@@ -114,7 +112,7 @@ object Starlisp {
   }
   intern("symbol-value").value = new LispSubr("symbol-value", 1) {
     def apply(o: Array[LispObject]): LispObject = {
-      if ((o(0) == null)) null else symbolValue(o(0).asInstanceOf[Symbol])
+      if ((o(0) == null)) null else o(0).asInstanceOf[Symbol].value
     }
   }
   intern("intern").value = new LispSubr("intern", 1) {
@@ -160,8 +158,11 @@ object Starlisp {
     }
   }
   intern("eql?").value = new LispSubr("eql?", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      eql(o(0), o(1))
+    def apply(o: Array[LispObject]): LispObject = eql(o(0), o(1))
+  }
+  intern("sqrt").value = new LispSubr("sqrt", 1) {
+    def apply(o: Array[LispObject]) = {
+      new LispFlonum((math.sqrt(o(0).asInstanceOf[LispNumber].toJavaDouble)))
     }
   }
   intern("=").value = new LispSubr("=", 2) {

@@ -49,13 +49,10 @@ final class LispFixnum(val n: Long) extends LispInteger {
     LispFixnum.create(n * nbr.n)
   }
 
-  def div(nbr: LispFixnum): LispNumber = {
-    LispFixnum.create(n / nbr.n)
-  }
-
-  def mod(nbr: LispFixnum): LispInteger = {
-    LispFixnum.create(n % nbr.n)
-  }
+  def div(nbr: LispFixnum): LispNumber = LispFixnum.create(n / nbr.n)
+  def mod(nbr: LispFixnum): LispInteger = LispFixnum.create(n % nbr.n)
+  def ash(nbr: LispInteger): LispInteger = ash(nbr.asInstanceOf[LispFixnum])
+  def negP: Boolean = n < 0
 
   def ash(nbr: LispFixnum): LispInteger = {
     LispFixnum.create(if ((nbr.n > 0)) n << nbr.n else n >> -nbr.n)
@@ -80,12 +77,6 @@ final class LispFixnum(val n: Long) extends LispInteger {
   def mod(nbr: LispInteger): LispInteger = {
     if ((nbr.isInstanceOf[LispBignum])) (new LispBignum(n)).mod(nbr.asInstanceOf[LispBignum]) else mod(nbr.asInstanceOf[LispFixnum])
   }
-
-  def ash(nbr: LispInteger): LispInteger = {
-    ash(nbr.asInstanceOf[LispFixnum])
-  }
-
-  def negP: Boolean = n < 0
 
   override def toString: String = String.valueOf(n)
 
