@@ -22,8 +22,6 @@ import java.io.StringReader
 
 object Starlisp {
 
-  var done = false
-
   def toStringOrNull(obj: LispObject): String = Option(obj).getOrElse("nil").toString
 
   def prin1(obj: LispObject, stream: LispStream): LispObject = {
@@ -186,10 +184,9 @@ object Starlisp {
       (o(0).asInstanceOf[LispArray]).aset((o(1).asInstanceOf[LispInteger]).toJavaInt, o(2))
     }
   }
-  intern("exit").value = new LispSubr("exit", 0, 1) {
+  intern("system-exit").value = new LispSubr("exit", 0, 1) {
     def apply(o: Array[LispObject]): LispObject = {
-      done = true
-      //System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
+      System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
       null
     }
   }
@@ -362,6 +359,8 @@ object Starlisp {
 }
 
 class Runtime {
+
+  var done = false
 
   private val symbolContext = Symbol.cloneSymbols
 
@@ -570,6 +569,13 @@ class Runtime {
           eval(cons(o(1), cons(new JavaObject(e), null)))
         }
       }
+    }
+  }
+  intern("exit").value = new LispSubr("exit", 0, 1) {
+    def apply(o: Array[LispObject]): LispObject = {
+      done = true
+      //System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
+      null
     }
   }
 }

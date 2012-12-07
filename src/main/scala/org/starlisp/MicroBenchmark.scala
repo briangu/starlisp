@@ -28,9 +28,9 @@ object MicroBenchmark {
   }
 
   def warmup2(runtime: Runtime) {
-    while(!Starlisp.done) {
+    while(!runtime.done) {
       try {
-        while(!Starlisp.done) {
+        while(!runtime.done) {
           Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("\n>>");
           val list = Starlisp.read(Symbol.standardInput.value.asInstanceOf[LispInputStream])
           println("\n\t %s".format(runtime.eval(list)))
@@ -48,7 +48,6 @@ object MicroBenchmark {
     warmup(runtime)
     warmup(runtime)
     warmup2(runtime)
-    Starlisp.done = false
     runtime = new Runtime
     warmup(runtime)
 
@@ -56,9 +55,9 @@ object MicroBenchmark {
 
     var start : Long = 0
     var now: Long = 0
-    while(!Starlisp.done) {
+    while(!runtime.done) {
       try {
-        while(!Starlisp.done) {
+        while(!runtime.done) {
           Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("\n>>");
           val list = Starlisp.read(Symbol.standardInput.value.asInstanceOf[LispInputStream])
           if (start == 0) start = System.currentTimeMillis()
