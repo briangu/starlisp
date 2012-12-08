@@ -10,4 +10,6 @@ abstract class Procedure(val name : String = "", val minArgs: Int = 0, val maxAr
   }
 
   def apply(objects: Array[LispObject]): LispObject
+
+  override def toString: String = "#<subr %s >".format(name)
 }
