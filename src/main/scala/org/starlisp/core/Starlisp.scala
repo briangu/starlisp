@@ -35,7 +35,9 @@ object Starlisp {
   }
 
   def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
+
   def car(list: Cell): LispObject = if (list == null) null else list.car
+
   def cdr(list: Cell): LispObject = if (list == null) null else list.cdr
 
   def eq(obj1: LispObject, obj2: LispObject): LispObject = if (obj1 eq obj2) Symbol.t else null
@@ -72,291 +74,207 @@ object Starlisp {
 
   intern("nil").value = null
   intern("Class").value = new JavaObject(classOf[Class[_]])
-  intern("cons").value = new LispSubr("cons", 2) {
-    def apply(o: Array[LispObject]): LispObject = cons(o(0), o(1))
+  intern("cons").value = LispSubr("cons", 2) { o => cons(o(0), o(1)) }
+  intern("car").value = LispSubr("car", 1) { o => car(o(0).asInstanceOf[Cell]) }
+  intern("cdr").value = LispSubr("cdr", 1) { o => cdr(o(0).asInstanceOf[Cell]) }
+  intern("rplaca").value = LispSubr("rplaca", 2) { o =>
+    (o(0).asInstanceOf[Cell]).setCar(o(1))
+    o(0)
   }
-  intern("car").value = new LispSubr("car", 1) {
-    def apply(o: Array[LispObject]): LispObject = car(o(0).asInstanceOf[Cell])
+  intern("rplacd").value = LispSubr("rplacd", 2) { o =>
+    (o(0).asInstanceOf[Cell]).setCdr(o(1).asInstanceOf[Cell])
+    o(0)
   }
-  intern("cdr").value = new LispSubr("cdr", 1) {
-    def apply(o: Array[LispObject]): LispObject = cdr(o(0).asInstanceOf[Cell])
+  intern("prin1").value = LispSubr("prin1", 1, 2) { o =>
+    prin1(o(0), if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null)
   }
-  intern("rplaca").value = new LispSubr("rplaca", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[Cell]).setCar(o(1))
-      o(0)
-    }
+  intern("eq?").value = LispSubr("eq?", 2) { o => Starlisp.eq(o(0), o(1)) }
+  intern("atom?").value = LispSubr("atom?", 1) { o => atom(o(0)) }
+  intern("set").value = LispSubr("set", 2) { o =>
+    (o(0).asInstanceOf[Symbol]).value = o(1)
+    o(1)
   }
-  intern("rplacd").value = new LispSubr("rplacd", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[Cell]).setCdr(o(1).asInstanceOf[Cell])
-      o(0)
-    }
+  intern("symbol-value").value = LispSubr("symbol-value", 1) { o =>
+    if ((o(0) == null)) null else o(0).asInstanceOf[Symbol].value
   }
-  intern("prin1").value = new LispSubr("prin1", 1, 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      prin1(o(0), if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null)
-    }
+  intern("intern").value = LispSubr("intern", 1) { o =>
+    if (o(0).isInstanceOf[LispString]) intern((o(0).asInstanceOf[LispString]).toJavaString)
+    else if (o(0).isInstanceOf[Symbol]) Symbol.intern((o(0).asInstanceOf[Symbol]))
+    else throw new LispException(Symbol.internalError, "Bad argument")
   }
-  intern("eq?").value = new LispSubr("eq?", 2) {
-    def apply(o: Array[LispObject]): LispObject = Starlisp.eq(o(0), o(1))
+  intern("+").value = LispSubr("+", 2) { o =>
+    (o(0).asInstanceOf[LispNumber]).add(o(1).asInstanceOf[LispNumber])
   }
-  intern("atom?").value = new LispSubr("atom?", 1) {
-    def apply(o: Array[LispObject]): LispObject = atom(o(0))
+  intern("-").value = LispSubr("-", 2) { o =>
+    (o(0).asInstanceOf[LispNumber]).sub(o(1).asInstanceOf[LispNumber])
   }
-  intern("set").value = new LispSubr("set", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[Symbol]).value = o(1)
-      o(1)
-    }
+  intern("*").value = LispSubr("*", 2) { o =>
+    (o(0).asInstanceOf[LispNumber]).mul(o(1).asInstanceOf[LispNumber])
   }
-  intern("symbol-value").value = new LispSubr("symbol-value", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if ((o(0) == null)) null else o(0).asInstanceOf[Symbol].value
-    }
+  intern("/").value = LispSubr("/", 2) { o =>
+    (o(0).asInstanceOf[LispNumber]).div(o(1).asInstanceOf[LispNumber])
   }
-  intern("intern").value = new LispSubr("intern", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if (o(0).isInstanceOf[LispString]) return intern((o(0).asInstanceOf[LispString]).toJavaString)
-      if (o(0).isInstanceOf[Symbol]) return Symbol.intern((o(0).asInstanceOf[Symbol]))
-      throw new LispException(Symbol.internalError, "Bad argument")
-    }
+  intern("mod").value = LispSubr("mod", 2) { o =>
+    (o(0).asInstanceOf[LispInteger]).mod(o(1).asInstanceOf[LispInteger])
   }
-  intern("+").value = new LispSubr("+", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispNumber]).add(o(1).asInstanceOf[LispNumber])
-    }
+  intern("ash").value = LispSubr("ash", 2) { o =>
+    (o(0).asInstanceOf[LispInteger]).ash(o(1).asInstanceOf[LispInteger])
   }
-  intern("-").value = new LispSubr("-", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispNumber]).sub(o(1).asInstanceOf[LispNumber])
-    }
+  intern("neg?").value = LispSubr("neg?", 1) { o =>
+    if ((o(0).asInstanceOf[LispNumber]).negP) Symbol.t else null
   }
-  intern("*").value = new LispSubr("*", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispNumber]).mul(o(1).asInstanceOf[LispNumber])
-    }
+  intern("eql?").value = LispSubr("eql?", 2) { o => eql(o(0), o(1)) }
+  intern("sqrt").value = LispSubr("sqrt", 1) { o =>
+    new LispFlonum((math.sqrt(o(0).asInstanceOf[LispNumber].toJavaDouble)))
   }
-  intern("/").value = new LispSubr("/", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispNumber]).div(o(1).asInstanceOf[LispNumber])
-    }
+  intern("=").value = LispSubr("=", 2) { o =>
+    if (((o(0).asInstanceOf[LispNumber]) == o(1).asInstanceOf[LispNumber])) Symbol.t else null
   }
-  intern("mod").value = new LispSubr("mod", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispInteger]).mod(o(1).asInstanceOf[LispInteger])
-    }
+  intern("char=").value = LispSubr("char=", 2) { o =>
+    if (((o(0).asInstanceOf[LispChar]).ch == (o(1).asInstanceOf[LispChar]).ch)) Symbol.t else null
   }
-  intern("ash").value = new LispSubr("ash", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispInteger]).ash(o(1).asInstanceOf[LispInteger])
-    }
+  intern("aref").value = LispSubr("aref", 2) { o =>
+    (o(0).asInstanceOf[LispArray]).aref((o(1).asInstanceOf[LispInteger]).toJavaInt)
   }
-  intern("neg?").value = new LispSubr("neg?", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if ((o(0).asInstanceOf[LispNumber]).negP) Symbol.t else null
-    }
+  intern("aset").value = LispSubr("aset", 3) { o =>
+    (o(0).asInstanceOf[LispArray]).aset((o(1).asInstanceOf[LispInteger]).toJavaInt, o(2))
   }
-  intern("eql?").value = new LispSubr("eql?", 2) {
-    def apply(o: Array[LispObject]): LispObject = eql(o(0), o(1))
+  intern("system-exit").value = LispSubr("exit", 0, 1) { o =>
+    System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
+    null
   }
-  intern("sqrt").value = new LispSubr("sqrt", 1) {
-    def apply(o: Array[LispObject]) = {
-      new LispFlonum((math.sqrt(o(0).asInstanceOf[LispNumber].toJavaDouble)))
-    }
-  }
-  intern("=").value = new LispSubr("=", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if (((o(0).asInstanceOf[LispNumber]) == o(1).asInstanceOf[LispNumber])) Symbol.t else null
-    }
-  }
-  intern("char=").value = new LispSubr("char=", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if (((o(0).asInstanceOf[LispChar]).ch == (o(1).asInstanceOf[LispChar]).ch)) Symbol.t else null
-    }
-  }
-  intern("aref").value = new LispSubr("aref", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispArray]).aref((o(1).asInstanceOf[LispInteger]).toJavaInt)
-    }
-  }
-  intern("aset").value = new LispSubr("aset", 3) {
-    def apply(o: Array[LispObject]): LispObject = {
-      (o(0).asInstanceOf[LispArray]).aset((o(1).asInstanceOf[LispInteger]).toJavaInt, o(2))
-    }
-  }
-  intern("system-exit").value = new LispSubr("exit", 0, 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
-      null
-    }
-  }
-  intern("get-time").value = new LispSubr("get-time") {
-    def apply(o: Array[LispObject]): LispObject = new LispFixnum(System.currentTimeMillis)
-  }
-  intern("read-char").value = new LispSubr("read-char", 0, 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      try {
-        readChar(if ((o.length > 0)) o(0).asInstanceOf[LispInputStream] else null)
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
-        }
+  intern("get-time").value = LispSubr("get-time") { o => new LispFixnum(System.currentTimeMillis) }
+  intern("read-char").value = LispSubr("read-char", 0, 1) { o =>
+    try {
+      readChar(if ((o.length > 0)) o(0).asInstanceOf[LispInputStream] else null)
+    } catch {
+      case e: IOException => {
+        throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
       }
     }
   }
-  intern("write-char").value = new LispSubr("write-char", 1, 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      try {
-        writeChar(o(0).asInstanceOf[LispChar], (if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null))
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
-        }
+  intern("write-char").value = LispSubr("write-char", 1, 2) { o =>
+    try {
+      writeChar(o(0).asInstanceOf[LispChar], (if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null))
+    } catch {
+      case e: IOException => {
+        throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
       }
     }
   }
-  intern("read").value = new LispSubr("read", 0, 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      try {
-        read(if ((o.length > 0)) o(0).asInstanceOf[LispInputStream] else null)
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
-        }
+  intern("read").value = LispSubr("read", 0, 1) { o =>
+    try {
+      read(if ((o.length > 0)) o(0).asInstanceOf[LispInputStream] else null)
+    } catch {
+      case e: IOException => {
+        throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
       }
     }
   }
-  intern("open").value = new LispSubr("open", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      try {
-        if (o(1) eq Symbol.in) return new LispStreamImpl(new FileReader((o(0).asInstanceOf[LispString]).toJavaString), null)
-        if (o(1) eq Symbol.out) return new LispStreamImpl(null, new PrintWriter(new FileWriter((o(0).asInstanceOf[LispString]).toJavaString)))
-        throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, e)
-        }
+  intern("open").value = LispSubr("open", 2) { o =>
+    try {
+      if (o(1) eq Symbol.in) new LispStreamImpl(new FileReader((o(0).asInstanceOf[LispString]).toJavaString), null)
+      else if (o(1) eq Symbol.out) new LispStreamImpl(null, new PrintWriter(new FileWriter((o(0).asInstanceOf[LispString]).toJavaString)))
+      else throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
+    } catch {
+      case e: IOException => {
+        throw new LispException(Symbol.internalError, e)
       }
     }
   }
-  intern("close").value = new LispSubr("close", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      try {
-        if ((o(0).asInstanceOf[LispStream]).close) Symbol.t else null
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
-        }
+  intern("close").value = LispSubr("close", 1) { o =>
+    try {
+      if ((o(0).asInstanceOf[LispStream]).close) Symbol.t else null
+    } catch {
+      case e: IOException => {
+        throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
       }
     }
   }
-  intern("eof?").value = new LispSubr("eof?", 1) {
-    def apply(o: Array[LispObject]): LispObject = if ((o(0).asInstanceOf[LispStream]).eof) Symbol.t else null
+  intern("eof?").value = LispSubr("eof?", 1) { o =>
+    if ((o(0).asInstanceOf[LispStream]).eof) Symbol.t else null
   }
-  intern("make-string-input-stream").value = new LispSubr("make-string-input-stream", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      new LispStreamImpl(new StringReader((o(0).asInstanceOf[LispString]).toJavaString), null)
+  intern("make-string-input-stream").value = LispSubr("make-string-input-stream", 1) { o =>
+    new LispStreamImpl(new StringReader((o(0).asInstanceOf[LispString]).toJavaString), null)
+  }
+  intern("make-string-output-stream").value = LispSubr("make-string-output-stream") { o =>
+    new StringOutputStream
+  }
+  intern("get-output-stream-string").value = LispSubr("get-output-stream-string", 1) { o =>
+    new LispString((o(0).asInstanceOf[StringOutputStream]).getOutputStreamString)
+  }
+  intern("throw").value = LispSubr("throw", 1, 2) { o =>
+    if (o.length == 2) {
+      if (o(1).isInstanceOf[LispString]) throw new LispException(o(0).asInstanceOf[Symbol], (o(1).asInstanceOf[LispString]).toJavaString)
+      else if (o(1).isInstanceOf[JavaObject]) throw new LispException(o(0).asInstanceOf[Symbol], (o(1).asInstanceOf[JavaObject]).getObj.asInstanceOf[Throwable])
+      else throw new LispException(Symbol.internalError, "Throw threw a throw.")
     }
+    if (o(0).isInstanceOf[JavaObject] && (o(0).asInstanceOf[JavaObject]).getObj.isInstanceOf[LispException]) throw (o(0).asInstanceOf[JavaObject]).getObj.asInstanceOf[LispException]
+    throw new LispException(o(0).asInstanceOf[Symbol])
   }
-  intern("make-string-output-stream").value = new LispSubr("make-string-output-stream") {
-    def apply(o: Array[LispObject]): LispObject = new StringOutputStream
+  intern("make-array").value = LispSubr("make-array", 1) { o =>
+    if (o(0).isInstanceOf[Cell]) new LispArray(o(0).asInstanceOf[Cell])
+    else if (o(0).isInstanceOf[LispInteger]) new LispArray((o(0).asInstanceOf[LispInteger]).toJavaInt)
+    else throw new LispException(Symbol.internalError, "make-array wants an integer or a list")
   }
-  intern("get-output-stream-string").value = new LispSubr("get-output-stream-string", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      new LispString((o(0).asInstanceOf[StringOutputStream]).getOutputStreamString)
-    }
+  intern("make-string").value = LispSubr("make-string", 2) { o =>
+    new LispString((o(0).asInstanceOf[LispInteger]).toJavaInt, o(1).asInstanceOf[LispChar])
   }
-  intern("throw").value = new LispSubr("throw", 1, 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if (o.length == 2) {
-        if (o(1).isInstanceOf[LispString]) throw new LispException(o(0).asInstanceOf[Symbol], (o(1).asInstanceOf[LispString]).toJavaString)
-        else if (o(1).isInstanceOf[JavaObject]) throw new LispException(o(0).asInstanceOf[Symbol], (o(1).asInstanceOf[JavaObject]).getObj.asInstanceOf[Throwable])
-        else throw new LispException(Symbol.internalError, "Throw threw a throw.")
-      }
-      if (o(0).isInstanceOf[JavaObject] && (o(0).asInstanceOf[JavaObject]).getObj.isInstanceOf[LispException]) throw (o(0).asInstanceOf[JavaObject]).getObj.asInstanceOf[LispException]
-      throw new LispException(o(0).asInstanceOf[Symbol])
-    }
+  intern("length").value = LispSubr("length", 1) { o =>
+    new LispFixnum(if ((o(0) == null)) 0 else if ((o(0).isInstanceOf[Cell])) (o(0).asInstanceOf[Cell]).length else (o(0).asInstanceOf[LispArray]).length)
   }
-  intern("make-array").value = new LispSubr("make-array", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if (o(0).isInstanceOf[Cell]) return new LispArray(o(0).asInstanceOf[Cell])
-      else if (o(0).isInstanceOf[LispInteger]) return new LispArray((o(0).asInstanceOf[LispInteger]).toJavaInt)
-      else throw new LispException(Symbol.internalError, "make-array wants an integer or a list")
-    }
+  intern("equal?").value = LispSubr("equal?", 2) { o =>
+    if ((if ((o(0) == null)) o(1) == null else (o(0) == o(1)))) Symbol.t else null
   }
-  intern("make-string").value = new LispSubr("make-string", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      new LispString((o(0).asInstanceOf[LispInteger]).toJavaInt, o(1).asInstanceOf[LispChar])
-    }
+  intern("sxhash").value = LispSubr("sxhash", 1) {
+    o => new LispFixnum(if ((o(0) == null)) 0 else o(0).hashCode)
   }
-  intern("length").value = new LispSubr("length", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      new LispFixnum(if ((o(0) == null)) 0 else if ((o(0).isInstanceOf[Cell])) (o(0).asInstanceOf[Cell]).length else (o(0).asInstanceOf[LispArray]).length)
-    }
+  intern("running-compiled?").value = LispSubr("running-compiled?") { o => null }
+  intern("char->integer").value = LispSubr("char->integer", 1) { o =>
+    new LispFixnum((o(0).asInstanceOf[LispChar]).ch.asInstanceOf[Int])
   }
-  intern("equal?").value = new LispSubr("equal?", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      if ((if ((o(0) == null)) o(1) == null else (o(0) == o(1)))) Symbol.t else null
-    }
+  intern("integer->char").value = LispSubr("integer->char", 1) { o =>
+    LispChar.create((o(0).asInstanceOf[LispInteger]).toJavaInt.asInstanceOf[Char])
   }
-  intern("sxhash").value = new LispSubr("sxhash", 1) {
-    def apply(o: Array[LispObject]): LispObject = new LispFixnum(if ((o(0) == null)) 0 else o(0).hashCode)
+  intern("type?").value = LispSubr("type?", 2) { o =>
+    val knownType =
+      if (o(0) eq number) o(1).isInstanceOf[LispNumber]
+      else if (o(0) eq integer) o(1).isInstanceOf[LispInteger]
+      else if (o(0) eq fixnum) o(1).isInstanceOf[LispFixnum]
+      else if (o(0) eq bignum) o(1).isInstanceOf[LispBignum]
+      else if (o(0) eq flonum) o(1).isInstanceOf[LispFlonum]
+      else if (o(0) eq symbol) o(1).isInstanceOf[Symbol]
+      else if (o(0) eq cons) o(1).isInstanceOf[Cell]
+      else if (o(0) eq list) (o(1) == null || o(1).isInstanceOf[Cell])
+      else if (o(0) eq procedure) o(1).isInstanceOf[Procedure]
+      else if (o(0) eq subr) o(1).isInstanceOf[LispSubr]
+      else if (o(0) eq array) o(1).isInstanceOf[LispArray]
+      else if (o(0) eq string) o(1).isInstanceOf[LispString]
+      else if (o(0) eq javaObject) o(1).isInstanceOf[JavaObject]
+      else if (o(0) eq javaMethod) o(1).isInstanceOf[JavaMethod]
+      else if (o(0) eq charmander) o(1).isInstanceOf[LispChar]
+      else if (o(0) eq stream) o(1).isInstanceOf[LispStream]
+      else false
+    if (knownType) Symbol.t else null
   }
-  intern("running-compiled?").value = new LispSubr("running-compiled?") {
-    def apply(o: Array[LispObject]): LispObject = null
-  }
-  intern("char->integer").value = new LispSubr("char->integer", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      new LispFixnum((o(0).asInstanceOf[LispChar]).ch.asInstanceOf[Int])
-    }
-  }
-  intern("integer->char").value = new LispSubr("integer->char", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      LispChar.create((o(0).asInstanceOf[LispInteger]).toJavaInt.asInstanceOf[Char])
-    }
-  }
-  intern("type?").value = new LispSubr("type?", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      val knownType =
-        if (o(0) eq number) o(1).isInstanceOf[LispNumber]
-        else if (o(0) eq integer) o(1).isInstanceOf[LispInteger]
-        else if (o(0) eq fixnum) o(1).isInstanceOf[LispFixnum]
-        else if (o(0) eq bignum) o(1).isInstanceOf[LispBignum]
-        else if (o(0) eq flonum) o(1).isInstanceOf[LispFlonum]
-        else if (o(0) eq symbol) o(1).isInstanceOf[Symbol]
-        else if (o(0) eq cons) o(1).isInstanceOf[Cell]
-        else if (o(0) eq list) (o(1) == null || o(1).isInstanceOf[Cell])
-        else if (o(0) eq procedure) o(1).isInstanceOf[Procedure]
-        else if (o(0) eq subr) o(1).isInstanceOf[LispSubr]
-        else if (o(0) eq array) o(1).isInstanceOf[LispArray]
-        else if (o(0) eq string) o(1).isInstanceOf[LispString]
-        else if (o(0) eq javaObject) o(1).isInstanceOf[JavaObject]
-        else if (o(0) eq javaMethod) o(1).isInstanceOf[JavaMethod]
-        else if (o(0) eq charmander) o(1).isInstanceOf[LispChar]
-        else if (o(0) eq stream) o(1).isInstanceOf[LispStream]
-        else false
-      if (knownType) Symbol.t else null
-    }
 
-    private[core] val number: Symbol = intern("number")
-    private[core] val integer: Symbol = intern("integer")
-    private[core] val fixnum: Symbol = intern("fixnum")
-    private[core] val bignum: Symbol = intern("bignum")
-    private[core] val flonum: Symbol = intern("flonum")
-    private[core] val symbol: Symbol = intern("symbol")
-    private[core] val cons: Symbol = intern("cons")
-    private[core] val procedure: Symbol = intern("procedure")
-    private[core] val subr: Symbol = intern("subr")
-    private[core] val array: Symbol = intern("array")
-    private[core] val string: Symbol = intern("string")
-    private[core] val javaObject: Symbol = intern("java-object")
-    private[core] val javaMethod: Symbol = intern("java-method")
-    private[core] val exception: Symbol = intern("exception")
-    private[core] val charmander: Symbol = intern("char")
-    private[core] val stream: Symbol = intern("stream")
-    private[core] val list: Symbol = intern("list")
-  }
+  private[core] val number: Symbol = intern("number")
+  private[core] val integer: Symbol = intern("integer")
+  private[core] val fixnum: Symbol = intern("fixnum")
+  private[core] val bignum: Symbol = intern("bignum")
+  private[core] val flonum: Symbol = intern("flonum")
+  private[core] val symbol: Symbol = intern("symbol")
+  private[core] val cons: Symbol = intern("cons")
+  private[core] val procedure: Symbol = intern("procedure")
+  private[core] val subr: Symbol = intern("subr")
+  private[core] val array: Symbol = intern("array")
+  private[core] val string: Symbol = intern("string")
+  private[core] val javaObject: Symbol = intern("java-object")
+  private[core] val javaMethod: Symbol = intern("java-method")
+  private[core] val exception: Symbol = intern("exception")
+  private[core] val charmander: Symbol = intern("char")
+  private[core] val stream: Symbol = intern("stream")
+  private[core] val list: Symbol = intern("list")
 }
 
 class Runtime {
@@ -542,41 +460,28 @@ class Runtime {
   }
 
   // Initialize the Runtime-specific methods
-  intern("eval").value = new LispSubr("eval", 1) {
-    def apply(o: Array[LispObject]): LispObject = eval(o(0))
-  }
-  intern("symbols").value = new LispSubr("symbols") {
-    def apply(o: Array[LispObject]): LispObject = symbolContext.getSymbols
-  }
-  intern("gensym").value = new LispSubr("gensym") {
-    def apply(o: Array[LispObject]): LispObject = gensym
-  }
-  intern("make-runnable").value = new LispSubr("make-runnable", 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      new JavaObject(new Runnable {
-        def run {
-          eval(cons(o(0), null))
-        }
-      })
-    }
-  }
-  intern("%try").value = new LispSubr("%try", 2) {
-    def apply(o: Array[LispObject]): LispObject = {
-      try {
+  intern("eval").value = LispSubr("eval", 1) { o => eval(o(0)) }
+  intern("symbols").value = LispSubr("symbols") { o => symbolContext.getSymbols }
+  intern("gensym").value = LispSubr("gensym") { o => gensym }
+  intern("make-runnable").value = LispSubr("make-runnable", 1) { o =>
+    new JavaObject(new Runnable {
+      def run {
         eval(cons(o(0), null))
       }
-      catch {
-        case e: Exception => {
-          eval(cons(o(1), cons(new JavaObject(e), null)))
-        }
+    })
+  }
+  intern("%try").value = LispSubr("%try", 2) { o =>
+    try {
+      eval(cons(o(0), null))
+    }
+    catch {
+      case e: Exception => {
+        eval(cons(o(1), cons(new JavaObject(e), null)))
       }
     }
   }
-  intern("exit").value = new LispSubr("exit", 0, 1) {
-    def apply(o: Array[LispObject]): LispObject = {
-      done = true
-      //System.exit(if ((o.length < 1)) 0 else (o(0).asInstanceOf[LispNumber]).toJavaInt)
-      null
-    }
+  intern("exit").value = LispSubr("exit", 0, 1) { o =>
+    done = true
+    null
   }
 }
