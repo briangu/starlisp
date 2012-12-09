@@ -2,7 +2,6 @@ package org.starlisp.core
 
 import java.util.regex.Pattern
 import java.math.BigInteger
-import annotation.switch
 
 object LispNumber {
 
@@ -28,68 +27,54 @@ object LispNumber {
   }
 }
 
-object Calculate {
-  def add(a: LispNumber, b: LispNumber) : LispNumber = (b(a), a(b)) match {
+abstract class LispNumber extends LispObject {
+  def add(n: LispNumber) = (n.promote(this), promote(n)) match {
     case (a: LispBigDecimal, b: LispBigDecimal) => new LispBigDecimal(a.toBigDecimal + b.toBigDecimal)
     case (a: LispBigInt, b: LispBigInt) => new LispBigInt(a.toBigInt + b.toBigInt)
     case (a: LispFlonum, b: LispFlonum) => new LispFlonum(a.toJavaDouble + b.toJavaDouble)
     case (a: LispFixnum, b: LispFixnum) => {
-      val n = a.toJavaLong
-      val nbr = b.toJavaLong
-      val res = LispFixnum.create(n + nbr)
-      if (((n ^ res.n) & (nbr ^ res.n)) < 0) new LispBigInt(a.toBigInt + b.toBigInt) else res
+      val res = LispFixnum.create(a.n + b.n)
+      if (((a.n ^ res.n) & (b.n ^ res.n)) < 0) new LispBigInt(a.toBigInt + b.toBigInt) else res
     }
-    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(a.getClass.getName, b.getClass.getName))
+    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(getClass.getName, n.getClass.getName))
   }
 
-  def sub(a: LispNumber, b: LispNumber) : LispNumber = (b(a), a(b)) match {
+  def sub(n: LispNumber) = (n.promote(this), promote(n)) match {
     case (a: LispBigDecimal, b: LispBigDecimal) => new LispBigDecimal(a.toBigDecimal - b.toBigDecimal)
     case (a: LispBigInt, b: LispBigInt) => new LispBigInt(a.toBigInt - b.toBigInt)
     case (a: LispFlonum, b: LispFlonum) => new LispFlonum(a.toJavaDouble - b.toJavaDouble)
     case (a: LispFixnum, b: LispFixnum) =>  {
-      val n = a.toJavaLong
-      val nbr = b.toJavaLong
-      val res: LispFixnum = LispFixnum.create(n - nbr)
-      if (((n ^ res.n) & (-nbr ^ res.n)) < 0) new LispBigInt(a.toBigInt - b.toBigInt) else res
+      val res: LispFixnum = LispFixnum.create(a.n - b.n)
+      if (((a.n ^ res.n) & (-b.n ^ res.n)) < 0) new LispBigInt(a.toBigInt - b.toBigInt) else res
     }
-    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(a.getClass.getName, b.getClass.getName))
+    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(getClass.getName, n.getClass.getName))
   }
 
-  def mul(a: LispNumber, b: LispNumber) : LispNumber = (b(a), a(b)) match {
+  def mul(n: LispNumber) = (n.promote(this), promote(n)) match {
     case (a: LispBigDecimal, b: LispBigDecimal) => new LispBigDecimal(a.toBigDecimal * b.toBigDecimal)
     case (a: LispBigInt, b: LispBigInt) => new LispBigInt(a.toBigInt * b.toBigInt)
     case (a: LispFlonum, b: LispFlonum) => new LispFlonum(a.toJavaDouble * b.toJavaDouble)
     case (a: LispFixnum, b: LispFixnum) => {
-      val n = a.toJavaLong
-      val nbr = b.toJavaLong
-      if (java.lang.Long.numberOfLeadingZeros(Math.abs(n)) + java.lang.Long.numberOfLeadingZeros(Math.abs(nbr)) < 65)
+      import java.lang.Long
+      if (Long.numberOfLeadingZeros(math.abs(a.n)) + Long.numberOfLeadingZeros(math.abs(b.n)) < 65)
         new LispBigInt(a.toBigInt * b.toBigInt)
       else
-        LispFixnum.create(n * nbr)
+        LispFixnum.create(a.n * b.n)
     }
-    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(a.getClass.getName, b.getClass.getName))
+    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(getClass.getName, n.getClass.getName))
   }
 
-  def div(a: LispNumber, b: LispNumber) : LispNumber = (b(a), a(b)) match {
+  def div(n: LispNumber) = (n.promote(this), promote(n)) match {
     case (a: LispBigDecimal, b: LispBigDecimal) => new LispBigDecimal(a.toBigDecimal / b.toBigDecimal)
     case (a: LispBigInt, b: LispBigInt) => new LispBigInt(a.toBigInt / b.toBigInt)
     case (a: LispFlonum, b: LispFlonum) => new LispFlonum(a.toJavaDouble / b.toJavaDouble)
     case (a: LispFixnum, b: LispFixnum) => new LispFixnum(a.toJavaLong / b.toJavaLong)
-    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(a.getClass.getName, b.getClass.getName))
+    case _ => throw new UnsupportedOperationException("unsupported: %s + %s".format(getClass.getName, n.getClass.getName))
   }
-}
-
-abstract class LispNumber extends LispObject {
-  protected def coerceFixnumToBignum(nbr: LispNumber) = new LispBigInt(nbr.toJavaLong)
-
-  def add(n: LispNumber) = Calculate.add(this, n)
-  def sub(n: LispNumber) = Calculate.sub(this, n)
-  def mul(n: LispNumber) = Calculate.mul(this, n)
-  def div(n: LispNumber) = Calculate.div(this, n)
 
   def negP: Boolean
 
-  def apply(n: LispNumber): LispNumber
+  def promote(n: LispNumber): LispNumber
 
   def toJavaInt: Int
   def toJavaLong: Long
@@ -110,7 +95,7 @@ class LispBigDecimal(val n: BigDecimal) extends LispNumber {
 
   def negP = n.signum == -1
 
-  def apply(n: LispNumber) = n match {
+  def promote(n: LispNumber) = n match {
     case o: LispBigDecimal => o
     case o: LispNumber => new LispBigDecimal(o.toBigDecimal)
   }
@@ -138,7 +123,7 @@ class LispBigInt(val n: BigInt) extends LispInteger {
   def ash(nbr: LispInteger) = new LispBigInt(n << nbr.toJavaInt)
   def mod(nbr: LispInteger): LispInteger = new LispBigInt(n % nbr.toBigInt)
 
-  def apply(n: LispNumber) = n match {
+  def promote(n: LispNumber) = n match {
     case o: LispBigDecimal => o
     case o: LispBigInt => o
     case o: LispNumber => new LispBigInt(o.toBigInt)
@@ -162,16 +147,18 @@ class LispBigInt(val n: BigInt) extends LispInteger {
 
 object LispFixnum {
 
-  private val cache: Array[LispFixnum] = new Array[LispFixnum](65536)
+  private val minCached = -32768
+  private val maxCached = 32768
+  private val cache: Array[LispFixnum] = new Array[LispFixnum](maxCached - minCached + 1)
 
-  def create(n: Long): LispFixnum = {
-    if (n >= -32768 && n < 32768) {
-      if (cache(n.toInt) == null) {
-        cache(n.toInt) = new LispFixnum(n)
-      }
-      cache(n.toInt)
+  def create(i: Long): LispFixnum = {
+    if (minCached <= i && i <= maxCached) {
+      val offset = i.toInt - minCached
+      var n = cache(offset)
+      if (n eq null) { n = new LispFixnum(i); cache(offset) = n }
+      n
     } else {
-      new LispFixnum(n)
+      new LispFixnum(i)
     }
   }
 }
@@ -185,7 +172,7 @@ final class LispFixnum(val n: Long) extends LispInteger {
     LispFixnum.create(if ((x > 0)) n << x else n >> -x)
   }
 
-  def apply(n: LispNumber) = n
+  def promote(n: LispNumber) = n
 
   def toJavaInt: Int = n.toInt
   def toJavaLong: Long = n
@@ -207,7 +194,7 @@ final class LispFlonum(val n: Double) extends LispNumber {
 
   def negP: Boolean = n < 0
 
-  def apply(n: LispNumber) = n match {
+  def promote(n: LispNumber) = n match {
     case o: LispFixnum => new LispFlonum(o.toJavaDouble)
     case o: LispNumber => o
   }

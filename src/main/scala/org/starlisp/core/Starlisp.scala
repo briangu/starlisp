@@ -24,22 +24,15 @@ object Starlisp {
 
   def toStringOrNull(obj: LispObject): String = Option(obj).getOrElse("nil").toString
 
-  def prin1(obj: LispObject, stream: LispStream): LispObject = {
-    val s = if ((stream != null)) stream else Symbol.standardOutput.value
-    if (obj != null) {
-      s.asInstanceOf[LispOutputStream].write(obj.toString)
-    } else {
-      s.asInstanceOf[LispOutputStream].write("nil")
-    }
+  def prin1(obj: LispObject, stream: LispOutputStream): LispObject = {
+    val s = if (stream != null) stream else Symbol.standardOutput.value.asInstanceOf[LispOutputStream]
+    if (obj != null) { s.write(obj.toString) } else { s.write("nil") }
     obj
   }
 
   def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
-
   def car(list: Cell): LispObject = if (list == null) null else list.car
-
   def cdr(list: Cell): LispObject = if (list == null) null else list.cdr
-
   def eq(obj1: LispObject, obj2: LispObject): LispObject = if (obj1 eq obj2) Symbol.t else null
 
   def read(stream: LispStream): LispObject = {
@@ -88,15 +81,13 @@ object Starlisp {
   intern("prin1").value = LispFn("prin1", 1, 2) { o =>
     prin1(o(0), if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null)
   }
-  intern("eq?").value = LispFn("eq?", 2) { o => Starlisp.eq(o(0), o(1)) }
-  intern("atom?").value = LispFn("atom?", 1) { o => atom(o(0)) }
-  intern("set").value = LispFn("set", 2) { o => (o(0).asInstanceOf[Symbol]).value = o(1); o(1) }
-  intern("symbol-value").value = LispFn("symbol-value", 1) { o =>
-    if ((o(0) == null)) null else o(0).asInstanceOf[Symbol].value
-  }
-  intern("intern").value = LispFn("intern", 1) { o =>
-    if (o(0).isInstanceOf[LispString]) intern((o(0).asInstanceOf[LispString]).toJavaString)
-    else if (o(0).isInstanceOf[Symbol]) Symbol.intern((o(0).asInstanceOf[Symbol]))
+  intern("eq?").value = LispFn2[LispObject]("eq?") { (a,b) => Starlisp.eq(a, b) }
+  intern("atom?").value = LispFn1[LispObject]("atom?") { o => atom(o) }
+  intern("set").value = LispFn2M[Symbol, LispObject]("set") { (a,b) => a.value = b; b }
+  intern("symbol-value").value = LispFn1[Symbol]("symbol-value") { o => if (o == null) null else o.value }
+  intern("intern").value = LispFn1[LispObject]("intern") { o =>
+    if (o.isInstanceOf[LispString]) intern((o.asInstanceOf[LispString]).toJavaString)
+    else if (o.isInstanceOf[Symbol]) Symbol.intern((o.asInstanceOf[Symbol]))
     else throw new LispException(Symbol.internalError, "Bad argument")
   }
   intern("+").value = LispFn2[LispNumber]("+") { (a,b) => a.add(b) }
@@ -107,7 +98,7 @@ object Starlisp {
   intern("ash").value = LispFn2[LispInteger]("ash") { (a,b) => a.ash(b) }
   intern("neg?").value = LispFn1[LispNumber]("neg?") { o => if (o.negP) Symbol.t else null }
   intern("sqrt").value = LispFn1[LispNumber]("sqrt") { o => new LispFlonum((math.sqrt(o.toJavaDouble))) }
-  intern("eql?").value = LispFn("eql?", 2) { o => eql(o(0), o(1)) }
+  intern("eql?").value = LispFn2[LispObject]("eql?") { (a,b) => eql(a, b) }
   intern("=").value = LispFn2[LispNumber]("=") { (a,b) => if (a == b) Symbol.t else null }
   intern("char=").value = LispFn2[LispChar]("char=") { (a,b) => if (a.ch == b.ch) Symbol.t else null }
   intern("aref").value = LispFn2M[LispArray, LispInteger]("aref") { (a,b) => a.aref(b.toJavaInt) }
@@ -157,18 +148,16 @@ object Starlisp {
       }
     }
   }
-  intern("close").value = LispFn("close", 1) { o =>
+  intern("close").value = LispFn1[LispStream]("close") { o =>
     try {
-      if ((o(0).asInstanceOf[LispStream]).close) Symbol.t else null
+      if (o.close) Symbol.t else null
     } catch {
       case e: IOException => {
         throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
       }
     }
   }
-  intern("eof?").value = LispFn("eof?", 1) { o =>
-    if ((o(0).asInstanceOf[LispStream]).eof) Symbol.t else null
-  }
+  intern("eof?").value = LispFn1[LispStream]("eof?") { o => if (o.eof) Symbol.t else null }
   intern("make-string-input-stream").value = LispFn1[LispString]("make-string-input-stream") { o =>
     new LispStreamImpl(new StringReader(o.toJavaString), null)
   }
@@ -196,37 +185,35 @@ object Starlisp {
   intern("length").value = LispFn("length", 1) { o =>
     new LispFixnum(if ((o(0) == null)) 0 else if ((o(0).isInstanceOf[Cell])) (o(0).asInstanceOf[Cell]).length else (o(0).asInstanceOf[LispArray]).length)
   }
-  intern("equal?").value = LispFn("equal?", 2) { o =>
-    if ((if ((o(0) == null)) o(1) == null else (o(0) == o(1)))) Symbol.t else null
+  intern("equal?").value = LispFn2[LispObject]("equal?") { (a,b) =>
+    if (if (a == null) (b == null) else (a == b)) Symbol.t else null
   }
-  intern("sxhash").value = LispFn("sxhash", 1) {
-    o => new LispFixnum(if ((o(0) == null)) 0 else o(0).hashCode)
-  }
+  intern("sxhash").value = LispFn1[LispObject]("sxhash") { o => new LispFixnum(if (o == null) 0 else o.hashCode) }
   intern("running-compiled?").value = LispFn("running-compiled?") { o => null }
   intern("char->integer").value = LispFn("char->integer", 1) { o =>
     new LispFixnum((o(0).asInstanceOf[LispChar]).ch.asInstanceOf[Int])
   }
-  intern("integer->char").value = LispFn("integer->char", 1) { o =>
-    LispChar.create((o(0).asInstanceOf[LispInteger]).toJavaInt.asInstanceOf[Char])
+  intern("integer->char").value = LispFn1[LispInteger]("integer->char") { o =>
+    LispChar.create(o.toJavaInt.asInstanceOf[Char])
   }
-  intern("type?").value = LispFn("type?", 2) { o =>
+  intern("type?").value = LispFn2M[Symbol, LispObject]("type?") { (a,b) =>
     val knownType =
-      if (o(0) eq number) o(1).isInstanceOf[LispNumber]
-      else if (o(0) eq integer) o(1).isInstanceOf[LispInteger]
-      else if (o(0) eq fixnum) o(1).isInstanceOf[LispFixnum]
-      else if (o(0) eq bignum) o(1).isInstanceOf[LispBignum]
-      else if (o(0) eq flonum) o(1).isInstanceOf[LispFlonum]
-      else if (o(0) eq symbol) o(1).isInstanceOf[Symbol]
-      else if (o(0) eq cons) o(1).isInstanceOf[Cell]
-      else if (o(0) eq list) (o(1) == null || o(1).isInstanceOf[Cell])
-      else if (o(0) eq procedure) o(1).isInstanceOf[Procedure]
-      else if (o(0) eq subr) o(1).isInstanceOf[LispFn]
-      else if (o(0) eq array) o(1).isInstanceOf[LispArray]
-      else if (o(0) eq string) o(1).isInstanceOf[LispString]
-      else if (o(0) eq javaObject) o(1).isInstanceOf[JavaObject]
-      else if (o(0) eq javaMethod) o(1).isInstanceOf[JavaMethod]
-      else if (o(0) eq charmander) o(1).isInstanceOf[LispChar]
-      else if (o(0) eq stream) o(1).isInstanceOf[LispStream]
+      if (a eq number) b.isInstanceOf[LispNumber]
+      else if (a eq integer) b.isInstanceOf[LispInteger]
+      else if (a eq fixnum) b.isInstanceOf[LispFixnum]
+      else if (a eq bignum) b.isInstanceOf[LispBigInt]
+      else if (a eq flonum) b.isInstanceOf[LispFlonum]
+      else if (a eq symbol) b.isInstanceOf[Symbol]
+      else if (a eq cons) b.isInstanceOf[Cell]
+      else if (a eq list) (b == null || b.isInstanceOf[Cell])
+      else if (a eq procedure) b.isInstanceOf[Procedure]
+      else if (a eq subr) b.isInstanceOf[LispFn]
+      else if (a eq array) b.isInstanceOf[LispArray]
+      else if (a eq string) b.isInstanceOf[LispString]
+      else if (a eq javaObject) b.isInstanceOf[JavaObject]
+      else if (a eq javaMethod) b.isInstanceOf[JavaMethod]
+      else if (a eq charmander) b.isInstanceOf[LispChar]
+      else if (a eq stream) b.isInstanceOf[LispStream]
       else false
     if (knownType) Symbol.t else null
   }
@@ -433,7 +420,7 @@ class Runtime {
   }
 
   // Initialize the Runtime-specific methods
-  intern("eval").value = LispFn("eval", 1) { o => eval(o(0)) }
+  intern("eval").value = LispFn1[LispObject]("eval") { o => eval(o) }
   intern("symbols").value = LispFn("symbols") { o => symbolContext.getSymbols }
   intern("gensym").value = LispFn("gensym") { o => gensym }
   intern("make-runnable").value = LispFn("make-runnable", 1) { o =>
@@ -443,13 +430,13 @@ class Runtime {
       }
     })
   }
-  intern("%try").value = LispFn("%try", 2) { o =>
+  intern("%try").value = LispFn2[LispObject]("%try") { (a,b) =>
     try {
-      eval(cons(o(0), null))
+      eval(cons(a, null))
     }
     catch {
       case e: Exception => {
-        eval(cons(o(1), cons(new JavaObject(e), null)))
+        eval(cons(b, cons(new JavaObject(e), null)))
       }
     }
   }
