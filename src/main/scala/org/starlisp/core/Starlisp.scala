@@ -31,19 +31,17 @@ object Starlisp {
   }
 
   def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
-  def car(list: Cell): LispObject = if (list == null) null else list.car
-  def cdr(list: Cell): LispObject = if (list == null) null else list.cdr
   def eq(obj1: LispObject, obj2: LispObject): LispObject = if (obj1 eq obj2) Symbol.t else null
 
-  def read(stream: LispStream): LispObject = {
+  def read(stream: LispInputStream): LispObject = {
     (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispInputStream].read
   }
 
-  def readChar(stream: LispStream): LispChar = {
+  def readChar(stream: LispInputStream): LispChar = {
     (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispInputStream].readChar
   }
 
-  def writeChar(ch: LispChar, stream: LispStream): LispChar = {
+  def writeChar(ch: LispChar, stream: LispOutputStream): LispChar = {
     (if (stream != null) stream else Symbol.standardOutput.value).asInstanceOf[LispOutputStream].write(ch.ch)
     ch
   }
@@ -67,9 +65,9 @@ object Starlisp {
 
   intern("nil").value = null
   intern("Class").value = new JavaObject(classOf[Class[_]])
-  intern("cons").value = LispFn("cons", 2) { o => cons(o(0), o(1)) }
-  intern("car").value = LispFn("car", 1) { o => car(o(0).asInstanceOf[Cell]) }
-  intern("cdr").value = LispFn("cdr", 1) { o => cdr(o(0).asInstanceOf[Cell]) }
+  intern("cons").value = LispFn("cons") { o => new Cell(o(0), o(1)) }
+  intern("car").value = LispFn1[Cell]("car") { o => if (o == null) null else o.car }
+  intern("cdr").value = LispFn1[Cell]("cdr") { o => if (o == null) null else o.cdr }
   intern("rplaca").value = LispFn("rplaca", 2) { o =>
     (o(0).asInstanceOf[Cell]).setCar(o(1))
     o(0)
@@ -239,6 +237,8 @@ object Starlisp {
 
 class Runtime {
 
+  import Starlisp._
+
   var done = false
 
   private val symbolContext = Symbol.cloneSymbols
@@ -250,8 +250,6 @@ class Runtime {
   private var genSymCounter = 0L
 
   private def intern(str: String) = symbolContext.intern(str)
-
-  private def cons(car: LispObject, cdr: LispObject): Cell = Starlisp.cons(car, cdr)
 
   private final def saveEnvironment {
     stackSize += 1
