@@ -30,9 +30,6 @@ object Starlisp {
     obj
   }
 
-  def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
-  def eq(obj1: LispObject, obj2: LispObject): LispObject = if (obj1 eq obj2) Symbol.t else null
-
   def read(stream: LispInputStream): LispObject = {
     (if (stream != null) stream else Symbol.standardInput.value).asInstanceOf[LispInputStream].read
   }
@@ -46,8 +43,9 @@ object Starlisp {
     ch
   }
 
-  private def atom(obj: LispObject): LispObject = if ((obj.isInstanceOf[Cell])) null else Symbol.t
+  private def atom(obj: LispObject): LispObject = if (obj.isInstanceOf[Cell]) null else Symbol.t
 
+  private def eq(obj1: LispObject, obj2: LispObject): LispObject = if (obj1 eq obj2) Symbol.t else null
   private def eql(a: LispObject, b: LispObject): LispObject = {
     if (a == null || b == null)
       eq(a, b)
@@ -79,7 +77,7 @@ object Starlisp {
   intern("prin1").value = LispFn("prin1", 1, 2) { o =>
     prin1(o(0), if ((o.length > 1)) o(1).asInstanceOf[LispOutputStream] else null)
   }
-  intern("eq?").value = LispFn2[LispObject]("eq?") { (a,b) => Starlisp.eq(a, b) }
+  intern("eq?").value = LispFn2[LispObject]("eq?") { (a,b) => if (a eq b) Symbol.t else null }
   intern("atom?").value = LispFn1[LispObject]("atom?") { o => atom(o) }
   intern("set").value = LispFn2M[Symbol, LispObject]("set") { (a,b) => a.value = b; b }
   intern("symbol-value").value = LispFn1[Symbol]("symbol-value") { o => if (o == null) null else o.value }
@@ -250,6 +248,8 @@ class Runtime {
   private var genSymCounter = 0L
 
   private def intern(str: String) = symbolContext.intern(str)
+
+  private def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
 
   private final def saveEnvironment {
     stackSize += 1
