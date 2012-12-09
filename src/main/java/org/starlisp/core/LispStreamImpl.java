@@ -135,13 +135,13 @@ public class LispStreamImpl extends LispObject implements LispInputStream, LispO
         ch = this.peekJavaChar();
         if (ch == ')')
           throw new LispException(readerError, "You now have me confuzzled, don't you want something after the dot?");
-        last.setCdr(this.read());
+        last.Cdr(this.read());
         this.skipWhiteSpaceAndComments();
         if (this.peekJavaChar() != ')')
           throw new LispException(readerError, "You just might want to end the list with parentheses, even though you're a prick.");
         break;
       }
-      last = (Cell) last.setCdr(new Cell(this.read(), null));
+      last = (Cell) last.Cdr(new Cell(this.read(), null));
       this.skipWhiteSpaceAndComments();
       ch = this.peekJavaChar();
     }

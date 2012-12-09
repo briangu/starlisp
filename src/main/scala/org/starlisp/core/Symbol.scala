@@ -1,10 +1,15 @@
 package org.starlisp.core
 
 import java.io.UnsupportedEncodingException
+import java.util.concurrent.atomic.AtomicInteger
 
 class SymbolContext {
 
   val index = new java.util.HashMap[String, Symbol](1024)
+
+  val genSymCounter = new AtomicInteger()
+
+  def gensym = new Symbol("G%d".format(genSymCounter.getAndIncrement()))
 
   def getSymbols: Cell = {
     import scala.collection.JavaConversions._

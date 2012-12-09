@@ -2,28 +2,18 @@ package org.starlisp.core
 
 class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispObject {
 
-  def setCar(car: LispObject) : LispObject = {
-    this.car = car
-    car
-  }
+  def Car[T <: LispObject](): T = this.car.asInstanceOf[T]
+  def Car(car: LispObject) : LispObject = { this.car = car; car }
 
-  def setCdr(cdr: LispObject) : LispObject = {
-    this.cdr = cdr
-    cdr
-  }
+  def Cdr[T <: LispObject](): T = this.cdr.asInstanceOf[T]
+  def Cdr(cdr: LispObject) : LispObject = { this.cdr = cdr; cdr }
 
   private final def hashCode(obj: LispObject): Int = {
     if ((obj == null)) 261835505 else if ((obj.isInstanceOf[Cell])) 1 + obj.hashCode else obj.hashCode
   }
 
-  override def hashCode: Int = {
-    hashCode(car) + 31 * hashCode(cdr)
-  }
-
-  private final def equals(a: LispObject, b: LispObject): Boolean = {
-    if (a == null) b == null else (a == b)
-  }
-
+  override def hashCode: Int = hashCode(car) + 31 * hashCode(cdr)
+  private final def equals(a: LispObject, b: LispObject) = if (a == null) b == null else (a == b)
   override def equals(obj: Any): Boolean = {
     if (obj == null) {
       (car == null && cdr == null)

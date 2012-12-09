@@ -14,11 +14,7 @@ package org.starlisp.core
 **       * Fix up equals for LispNumbers and more
 */
 
-import java.io.FileReader
-import java.io.FileWriter
-import java.io.IOException
-import java.io.PrintWriter
-import java.io.StringReader
+import java.io._
 
 object Starlisp {
 
@@ -26,7 +22,7 @@ object Starlisp {
 
   def prin1(obj: LispObject, stream: LispOutputStream): LispObject = {
     val s = if (stream != null) stream else Symbol.standardOutput.value.asInstanceOf[LispOutputStream]
-    if (obj != null) { s.write(obj.toString) } else { s.write("nil") }
+    if (obj != null) {s.write(obj.toString)} else {s.write("nil")}
     obj
   }
 
@@ -44,6 +40,7 @@ object Starlisp {
   }
 
   private def eq(obj1: LispObject, obj2: LispObject) = if (obj1 eq obj2) Symbol.t else null
+
   private def eql(a: LispObject, b: LispObject): LispObject = {
     if (a == null || b == null)
       eq(a, b)
@@ -70,17 +67,11 @@ object Starlisp {
   intern("cdr").value = new LispFn1[Cell]("cdr") {
     def apply(o: Array[LispObject]) = { if (a(o) == null) null else a(o).cdr }
   }
-  intern("rplaca").value = new LispFn("rplaca", 2) {
-    def apply(o: Array[LispObject]) = {
-      (o(0).asInstanceOf[Cell]).setCar(o(1))
-      o(0)
-    }
+  intern("rplaca").value = new LispFn2[Cell, LispObject]("rplaca", 2) {
+    def apply(o: Array[LispObject]) = { a(o).Car(b(o)); a(o) }
   }
-  intern("rplacd").value = new LispFn("rplacd", 2) {
-    def apply(o: Array[LispObject]) = {
-      (o(0).asInstanceOf[Cell]).setCdr(o(1).asInstanceOf[Cell])
-      o(0)
-    }
+  intern("rplacd").value = new LispFn2[Cell, LispObject]("rplacd", 2) {
+    def apply(o: Array[LispObject]) = { a(o).Cdr(b(o)); a(o) }
   }
   intern("prin1").value = new LispFn("prin1", 1, 2) {
     def apply(o: Array[LispObject]) = {
@@ -130,13 +121,13 @@ object Starlisp {
   intern("sqrt").value = new LispFn1[LispNumber]("sqrt") {
     def apply(o: Array[LispObject]) = { new LispFlonum((math.sqrt(a(o).toJavaDouble))) }
   }
-  intern("eql?").value = new LispFn2[LispObject,LispObject]("eql?") {
+  intern("eql?").value = new LispFn2[LispObject, LispObject]("eql?") {
     def apply(o: Array[LispObject]) = eql(a(o), b(o))
   }
-  intern("=").value = new LispFn2[LispNumber,LispNumber]("=") {
+  intern("=").value = new LispFn2[LispNumber, LispNumber]("=") {
     def apply(o: Array[LispObject]) = if (a(o) == b(o)) Symbol.t else null
   }
-  intern("char=").value = new LispFn2[LispChar,LispChar]("char=") {
+  intern("char=").value = new LispFn2[LispChar, LispChar]("char=") {
     def apply(o: Array[LispObject]) = if (a(o).ch == b(o).ch) Symbol.t else null
   }
   intern("aref").value = new LispFn2[LispArray, LispInteger]("aref") {
@@ -329,7 +320,6 @@ class Runtime {
   private val DEFAULT_STACK_SIZE = 32768 * 2
   private var stackSize = 0
   private val stack = new Array[LispObject](DEFAULT_STACK_SIZE)
-  private var genSymCounter = 0L
 
   private def intern(str: String) = symbolContext.intern(str)
   private def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
@@ -363,10 +353,10 @@ class Runtime {
     if (list == null) return null
     var last = new Cell(evalHead(list.car), null)
     val result = last
-    var c = list.cdr.asInstanceOf[Cell]
+    var c = list.Cdr[Cell]
     while (c != null) {
-      last = (last.setCdr(new Cell(evalHead(c.car), null))).asInstanceOf[Cell]
-      c = c.cdr.asInstanceOf[Cell]
+      last = (last.Cdr(new Cell(evalHead(c.car), null))).asInstanceOf[Cell]
+      c = c.Cdr[Cell]
     }
     result
   }
@@ -378,7 +368,7 @@ class Runtime {
     while (c != null) {
       res(i) = evalHead(c.car)
       i += 1
-      c = c.cdr.asInstanceOf[Cell]
+      c = c.Cdr[Cell]
     }
     res
   }
@@ -407,16 +397,16 @@ class Runtime {
       } else if (obj.isInstanceOf[Cell]) {
         val list = obj.asInstanceOf[Cell]
         if (list.car eq Symbol._if) {
-          val res = evalHead((list.cdr.asInstanceOf[Cell]).car)
+          val res = evalHead((list.Cdr[Cell]).car)
           if (res != null) {
-            obj = ((list.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]).car
-          } else if (((list.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]).cdr != null) {
-            obj = (((list.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]).car
+            obj = list.Cdr[Cell].Cdr[Cell].car
+          } else if (list.Cdr[Cell].Cdr[Cell].cdr != null) {
+            obj = list.Cdr[Cell].Cdr[Cell].Cdr[Cell].car
           } else {
             return null
           }
         } else if (list.car eq Symbol.quote) {
-          return (list.cdr.asInstanceOf[Cell]).car
+          return (list.Cdr[Cell]).car
         } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
           return list
         } else {
@@ -424,11 +414,12 @@ class Runtime {
           if (first.isInstanceOf[Cell]) {
             val f1rst = first.asInstanceOf[Cell]
             if (f1rst.car eq Symbol.lambda) {
-              val lambdaVar = (f1rst.cdr.asInstanceOf[Cell]).car
-              var lambdaBody = (f1rst.cdr.asInstanceOf[Cell]).cdr.asInstanceOf[Cell]
-              val argList = list.cdr.asInstanceOf[Cell]
+              val lambdaVar = f1rst.Cdr[Cell].car
+              var lambdaBody = f1rst.Cdr[Cell].Cdr[Cell]
+              val argList = list.Cdr[Cell]
               if (lambdaVar != null) {
-                if (argList == null && lambdaVar.isInstanceOf[Cell]) throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
+                if (argList == null && lambdaVar.isInstanceOf[Cell])
+                  throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
                 var evalledArgs = evlis(argList)
                 if (lambdaVar.isInstanceOf[Symbol]) {
                   bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
@@ -437,18 +428,20 @@ class Runtime {
                   var done = false
                   while (!done) {
                     if (c.cdr == null) {
-                      if (evalledArgs.cdr != null) throw new LispException(Symbol.internalError, "Too many args: " + obj)
-                      bind(c.car.asInstanceOf[Symbol], evalledArgs.car)
+                      if (evalledArgs.cdr != null)
+                        throw new LispException(Symbol.internalError, "Too many args: " + obj)
+                      bind(c.Car[Symbol], evalledArgs.car)
                       done = true
                     } else if (!(c.cdr.isInstanceOf[Cell])) {
-                      bind(c.car.asInstanceOf[Symbol], evalledArgs.car)
-                      bind(c.cdr.asInstanceOf[Symbol], evalledArgs.cdr)
+                      bind(c.Car[Symbol], evalledArgs.car)
+                      bind(c.Cdr[Symbol], evalledArgs.cdr)
                       done = true
                     } else {
-                      bind(c.car.asInstanceOf[Symbol], evalledArgs.car)
-                      evalledArgs = evalledArgs.cdr.asInstanceOf[Cell]
-                      if (evalledArgs == null) throw new LispException(Symbol.internalError, "Too few args: " + obj)
-                      c = c.cdr.asInstanceOf[Cell]
+                      bind(c.Car[Symbol], evalledArgs.car)
+                      evalledArgs = evalledArgs.Cdr[Cell]
+                      if (evalledArgs == null)
+                        throw new LispException(Symbol.internalError, "Too few args: " + obj)
+                      c = c.Cdr[Cell]
                     }
                   }
                 }
@@ -456,16 +449,16 @@ class Runtime {
               if (lambdaBody == null) return null
               while (lambdaBody.cdr != null) {
                 evalHead(lambdaBody.car)
-                lambdaBody = lambdaBody.cdr.asInstanceOf[Cell]
+                lambdaBody = lambdaBody.Cdr[Cell]
               }
               obj = lambdaBody.car
             } else if (f1rst.car eq Symbol.`macro`) {
-              obj = evalHead(cons(cons(Symbol.lambda, f1rst.cdr.asInstanceOf[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
+              obj = evalHead(cons(cons(Symbol.lambda, f1rst.Cdr[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
             } else {
               throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
             }
           } else if (first.isInstanceOf[Procedure]) {
-            return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.cdr.asInstanceOf[Cell]))
+            return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.Cdr[Cell]))
           } else {
             throw new LispException(
               Symbol.internalError,
@@ -481,16 +474,10 @@ class Runtime {
     obj
   }
 
-  private def gensym: LispObject = {
-    val id = "G%d".format(genSymCounter)
-    genSymCounter += 1
-    new Symbol(id)
-  }
-
   // Initialize the Runtime-specific methods
-  intern("eval").value = new LispFn1[LispObject]("eval") { def apply(o: Array[LispObject]) = eval(o(0)) }
-  intern("symbols").value = new LispFn("symbols") { def apply(o: Array[LispObject]) = symbolContext.getSymbols }
-  intern("gensym").value = new LispFn("gensym") { def apply(o: Array[LispObject]) = gensym }
+  intern("eval").value = new LispFn1[LispObject]("eval") {def apply(o: Array[LispObject]) = eval(o(0))}
+  intern("symbols").value = new LispFn("symbols") {def apply(o: Array[LispObject]) = symbolContext.getSymbols}
+  intern("gensym").value = new LispFn("gensym") {def apply(o: Array[LispObject]) = symbolContext.gensym}
   intern("make-runnable").value = new LispFn("make-runnable", 1) {
     def apply(o: Array[LispObject]) = {
       new JavaObject(new Runnable {
@@ -500,7 +487,7 @@ class Runtime {
       })
     }
   }
-  intern("%try").value = new LispFn2[LispObject,LispObject]("%try") {
+  intern("%try").value = new LispFn2[LispObject, LispObject]("%try") {
     def apply(o: Array[LispObject]) = {
       try {
         eval(cons(a(o), null))
