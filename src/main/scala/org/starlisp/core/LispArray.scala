@@ -5,13 +5,11 @@ import java.util.Arrays
 class LispArray(protected val ar: Array[LispObject]) extends LispObject {
 
   def this(length: Int) = this(new Array[LispObject](length))
-
   def this(list: Cell) = this(list.toArray)
 
   def length: Int = ar.length
 
   override def hashCode: Int = Arrays.deepHashCode(ar.asInstanceOf[Array[Object]])
-
   override def equals(obj: Any): Boolean = {
     obj.isInstanceOf[LispArray] && Arrays.deepEquals(ar.asInstanceOf[Array[Object]], (obj.asInstanceOf[LispArray]).ar.asInstanceOf[Array[Object]])
   }

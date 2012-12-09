@@ -2,7 +2,7 @@ package org.starlisp.core
 
 import java.io.IOException
 
-abstract trait LispStream {
+abstract trait LispStream extends LispObject {
   def eof: Boolean
   @throws(classOf[IOException]) def close: Boolean
 }

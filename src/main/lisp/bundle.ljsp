@@ -2191,7 +2191,3 @@
 
 
 (provide 'compile)
-
-(exit)
-
-
