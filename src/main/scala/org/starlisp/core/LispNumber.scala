@@ -227,18 +227,18 @@ class LispFixnum(val n: Long) extends LispInteger {
       val b = nbr.asInstanceOf[LispFixnum]
       val res = LispFixnum.create(n + b.n)
       if (((n ^ res.n) & (b.n ^ res.n)) < 0) new LispBigInt(toBigInt + b.toBigInt) else res
-    }
-    else
+    } else {
       nbr.promote(this).add(nbr) // skip promote(nbr) since fixnum is at the bottom
+    }
   }
   override def sub(nbr: LispNumber) = {
     if (nbr.isInstanceOf[LispFixnum]) {
       val b = nbr.asInstanceOf[LispFixnum]
       val res: LispFixnum = LispFixnum.create(n - b.n)
       if (((n ^ res.n) & (-b.n ^ res.n)) < 0) new LispBigInt(toBigInt - b.toBigInt) else res
-    }
-    else
+    } else {
       nbr.promote(this).sub(nbr) // skip promote(nbr) since fixnum is at the bottom
+    }
   }
   override def mul(nbr: LispNumber) = {
     if (nbr.isInstanceOf[LispFixnum]) {
@@ -248,9 +248,9 @@ class LispFixnum(val n: Long) extends LispInteger {
         new LispBigInt(toBigInt * b.toBigInt)
       else
         LispFixnum.create(n * b.n)
-    }
-    else
+    } else {
       nbr.promote(this).mul(nbr) // skip promote(nbr) since fixnum is at the bottom
+    }
   }
   override def div(nbr: LispNumber) = {
     if (nbr.isInstanceOf[LispFixnum])
