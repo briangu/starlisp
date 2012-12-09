@@ -4,11 +4,11 @@ import core._
 
 object REPL extends App {
   val runtime = new Runtime
-  while(!runtime.done) {
+  while(!runtime.stopped) {
     try {
       val out = Symbol.standardOutput.value.asInstanceOf[LispOutputStream]
       val in = Symbol.standardInput.value.asInstanceOf[LispInputStream]
-      while(!runtime.done) {
+      while(!runtime.stopped) {
         out.write("\n>> ");
         Starlisp.prin1(runtime.eval(Starlisp.read(in)), out)
       }

@@ -43,8 +43,6 @@ object Starlisp {
     ch
   }
 
-  private def atom(obj: LispObject): LispObject = if (obj.isInstanceOf[Cell]) null else Symbol.t
-
   private def eq(obj1: LispObject, obj2: LispObject) = if (obj1 eq obj2) Symbol.t else null
   private def eql(a: LispObject, b: LispObject): LispObject = {
     if (a == null || b == null)
@@ -93,7 +91,7 @@ object Starlisp {
     def apply(o: Array[LispObject]) = { if (a(o) eq b(o)) Symbol.t else null }
   }
   intern("atom?").value = new LispFn1[LispObject]("atom?") {
-    def apply(o: Array[LispObject]) = atom(a(o))
+    def apply(o: Array[LispObject]) = if (a(o).isInstanceOf[Cell]) null else Symbol.t
   }
   intern("set").value = new LispFn2[Symbol, LispObject]("set") {
     def apply(o: Array[LispObject]) = { a(o).value = b(o); b(o) }
@@ -323,9 +321,7 @@ object Starlisp {
 
 class Runtime {
 
-  import Starlisp._
-
-  var done = false
+  var stopped = false
 
   private val symbolContext = Symbol.cloneSymbols
 
@@ -336,13 +332,9 @@ class Runtime {
   private var genSymCounter = 0L
 
   private def intern(str: String) = symbolContext.intern(str)
-
   private def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
 
-  private final def saveEnvironment {
-    stackSize += 1
-  }
-
+  private final def saveEnvironment { stackSize += 1 }
   private final def restoreEnvironment {
     stackSize -= 1
     while (stack(stackSize) != null) {
@@ -381,8 +373,8 @@ class Runtime {
 
   private final def evlisArray(list: Cell): Array[LispObject] = {
     val res: Array[LispObject] = new Array[LispObject](if ((list == null)) 0 else list.length)
-    var i: Int = 0
-    var c: Cell = list
+    var i = 0
+    var c = list
     while (c != null) {
       res(i) = evalHead(c.car)
       i += 1
@@ -489,16 +481,6 @@ class Runtime {
     obj
   }
 
-  def prin1(obj: LispObject, stream: LispStream): LispObject = {
-    val s = if ((stream != null)) stream else Symbol.standardOutput.value
-    if (obj != null) {
-      s.asInstanceOf[LispOutputStream].write(obj.toString)
-    } else {
-      s.asInstanceOf[LispOutputStream].write("nil")
-    }
-    obj
-  }
-
   private def gensym: LispObject = {
     val id = "G%d".format(genSymCounter)
     genSymCounter += 1
@@ -506,7 +488,7 @@ class Runtime {
   }
 
   // Initialize the Runtime-specific methods
-  intern("eval").value = new LispFn1[LispObject]("eval") { def apply(o: Array[LispObject]) = eval(a(o)) }
+  intern("eval").value = new LispFn1[LispObject]("eval") { def apply(o: Array[LispObject]) = eval(o(0)) }
   intern("symbols").value = new LispFn("symbols") { def apply(o: Array[LispObject]) = symbolContext.getSymbols }
   intern("gensym").value = new LispFn("gensym") { def apply(o: Array[LispObject]) = gensym }
   intern("make-runnable").value = new LispFn("make-runnable", 1) {
@@ -532,7 +514,7 @@ class Runtime {
   }
   intern("exit").value = new LispFn("exit", 0, 1) {
     def apply(o: Array[LispObject]) = {
-      done = true
+      stopped = true
       null
     }
   }
