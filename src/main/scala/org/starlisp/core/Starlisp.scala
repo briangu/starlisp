@@ -397,16 +397,15 @@ class Runtime {
         case list: Cell => {
           val list = obj.asInstanceOf[Cell]
           if (list.car eq Symbol._if) {
-            val res = evalHead((list.Cdr[Cell]).car)
-            if (res != null) {
-              obj = list.Cdr[Cell].Cdr[Cell].car
-            } else if (list.Cdr[Cell].Cdr[Cell].cdr != null) {
-              obj = list.Cdr[Cell].Cdr[Cell].Cdr[Cell].car
-            } else {
-              return null
+            Option(evalHead((list.Cdr[Cell]).car)) match {
+              case Some(_) => obj = list.Cdr[Cell].Cdr[Cell].car
+              case None => Option(list.Cdr[Cell].Cdr[Cell].Cdr[Cell]) match {
+                case Some(cell) => obj = cell.car
+                case None => return null
+              }
             }
           } else if (list.car eq Symbol.quote) {
-            return (list.Cdr[Cell]).car
+            return list.Cdr[Cell].car
           } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
             return list
           } else {
