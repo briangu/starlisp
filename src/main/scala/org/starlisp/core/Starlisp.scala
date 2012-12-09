@@ -395,7 +395,6 @@ class Runtime {
       obj match {
         case symbol: Symbol => return symbol.value
         case list: Cell => {
-          val list = obj.asInstanceOf[Cell]
           if (list.car eq Symbol._if) {
             Option(evalHead((list.Cdr[Cell]).car)) match {
               case Some(_) => obj = list.Cdr[Cell].Cdr[Cell].car
