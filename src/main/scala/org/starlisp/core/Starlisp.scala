@@ -419,27 +419,28 @@ class Runtime {
                     if (argList == null && lambdaVar.isInstanceOf[Cell])
                       throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
                     var evalledArgs = evlis(argList)
-                    if (lambdaVar.isInstanceOf[Symbol]) {
-                      bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
-                    } else {
-                      var cell = lambdaVar.asInstanceOf[Cell]
-                      var done = false
-                      while (!done) {
-                        if (cell.cdr == null) {
-                          if (evalledArgs.cdr != null)
-                            throw new LispException(Symbol.internalError, "Too many args: " + obj)
-                          bind(cell.Car[Symbol], evalledArgs.car)
-                          done = true
-                        } else if (!(cell.cdr.isInstanceOf[Cell])) {
-                          bind(cell.Car[Symbol], evalledArgs.car)
-                          bind(cell.Cdr[Symbol], evalledArgs.cdr)
-                          done = true
-                        } else {
-                          bind(cell.Car[Symbol], evalledArgs.car)
-                          evalledArgs = evalledArgs.Cdr[Cell]
-                          if (evalledArgs == null)
-                            throw new LispException(Symbol.internalError, "Too few args: " + obj)
-                          cell = cell.Cdr[Cell]
+                    lambdaVar match {
+                      case symbol: Symbol => bind(symbol, evalledArgs)
+                      case head: Cell => {
+                        var cell = head
+                        var done = false
+                        while (!done) {
+                          if (cell.cdr == null) {
+                            if (evalledArgs.cdr != null)
+                              throw new LispException(Symbol.internalError, "Too many args: " + obj)
+                            bind(cell.Car[Symbol], evalledArgs.car)
+                            done = true
+                          } else if (!(cell.cdr.isInstanceOf[Cell])) {
+                            bind(cell.Car[Symbol], evalledArgs.car)
+                            bind(cell.Cdr[Symbol], evalledArgs.cdr)
+                            done = true
+                          } else {
+                            bind(cell.Car[Symbol], evalledArgs.car)
+                            evalledArgs = evalledArgs.Cdr[Cell]
+                            if (evalledArgs == null)
+                              throw new LispException(Symbol.internalError, "Too few args: " + obj)
+                            cell = cell.Cdr[Cell]
+                          }
                         }
                       }
                     }
