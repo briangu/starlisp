@@ -324,8 +324,8 @@ class Runtime {
   private def intern(str: String) = symbolContext.intern(str)
   private def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
 
-  private final def saveEnvironment { stackSize += 1 }
-  private final def restoreEnvironment {
+  private def saveEnvironment { stackSize += 1 }
+  private def restoreEnvironment {
     stackSize -= 1
     while (stack(stackSize) != null) {
       (stack(stackSize).asInstanceOf[Symbol]).value = stack(stackSize - 1)
@@ -335,7 +335,7 @@ class Runtime {
     }
   }
 
-  private final def bind(sbl: Symbol, value: LispObject) {
+  private def bind(sbl: Symbol, value: LispObject) {
     val oldValue: LispObject = sbl.value
     sbl.value = value
     var i = stackSize - 1
@@ -349,7 +349,7 @@ class Runtime {
     stackSize += 1;
   }
 
-  private final def evlis(list: Cell): Cell = {
+  private def evlis(list: Cell): Cell = {
     if (list == null) return null
     var last = new Cell(evalHead(list.car), null)
     val result = last
@@ -361,7 +361,7 @@ class Runtime {
     result
   }
 
-  private final def evlisArray(list: Cell): Array[LispObject] = {
+  private def evlisArray(list: Cell): Array[LispObject] = {
     val res: Array[LispObject] = new Array[LispObject](if ((list == null)) 0 else list.length)
     var i = 0
     var c = list
@@ -373,7 +373,7 @@ class Runtime {
     res
   }
 
-  private final def evalHead(obj: LispObject): LispObject = {
+  private def evalHead(obj: LispObject): LispObject = {
     saveEnvironment
     try {
       evalTail(obj)
@@ -385,11 +385,9 @@ class Runtime {
   /**
    * Evaluate code in the current dynamic environment
    */
-  final def eval(obj: LispObject): LispObject = {
-    evalHead(obj)
-  }
+  def eval(obj: LispObject) = evalHead(obj)
 
-  private final def evalTail(inobj: LispObject): LispObject = {
+  private def evalTail(inobj: LispObject): LispObject = {
     var obj = inobj
     while (true) {
       obj match {
