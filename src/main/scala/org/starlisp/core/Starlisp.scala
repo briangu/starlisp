@@ -414,36 +414,34 @@ class Runtime {
                   var lambdaBody = first.Cdr[Cell].Cdr[Cell]
                   if (lambdaBody == null) return null
                   val lambdaVar = first.Cdr[Cell].car
-                  if (lambdaVar != null) {
-                    val argList = list.Cdr[Cell]
-                    if (argList == null && lambdaVar.isInstanceOf[Cell])
-                      throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
-                    var evalledArgs = evlis(argList)
-                    lambdaVar match {
-                      case symbol: Symbol => bind(symbol, evalledArgs)
-                      case head: Cell => {
-                        var cell = head
-                        var done = false
-                        while (!done) {
-                          if (cell.cdr == null) {
-                            if (evalledArgs.cdr != null)
-                              throw new LispException(Symbol.internalError, "Too many args: " + obj)
-                            bind(cell.Car[Symbol], evalledArgs.car)
-                            done = true
-                          } else if (!(cell.cdr.isInstanceOf[Cell])) {
-                            bind(cell.Car[Symbol], evalledArgs.car)
-                            bind(cell.Cdr[Symbol], evalledArgs.cdr)
-                            done = true
-                          } else {
-                            bind(cell.Car[Symbol], evalledArgs.car)
-                            evalledArgs = evalledArgs.Cdr[Cell]
-                            if (evalledArgs == null)
-                              throw new LispException(Symbol.internalError, "Too few args: " + obj)
-                            cell = cell.Cdr[Cell]
-                          }
+                  (Option(lambdaVar), Option(evlis(list.Cdr[Cell]))) match {
+                    case (Some(symbol: Symbol), Some(args: Cell)) => bind(symbol, args)
+                    case (Some(head: Cell), Some(args: Cell)) => {
+                      var cell = head
+                      var evalledArgs = args
+                      var done = false
+                      while (!done) {
+                        if (cell.cdr == null) {
+                          if (evalledArgs.cdr != null)
+                            throw new LispException(Symbol.internalError, "Too many args: " + obj)
+                          bind(cell.Car[Symbol], evalledArgs.car)
+                          done = true
+                        } else if (!(cell.cdr.isInstanceOf[Cell])) {
+                          bind(cell.Car[Symbol], evalledArgs.car)
+                          bind(cell.Cdr[Symbol], evalledArgs.cdr)
+                          done = true
+                        } else {
+                          bind(cell.Car[Symbol], evalledArgs.car)
+                          evalledArgs = evalledArgs.Cdr[Cell]
+                          if (evalledArgs == null)
+                            throw new LispException(Symbol.internalError, "Too few args: " + obj)
+                          cell = cell.Cdr[Cell]
                         }
                       }
                     }
+                    case (Some(cell: Cell), None) =>
+                      throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
+                    case (_, _) => ;
                   }
                   while (lambdaBody.cdr != null) {
                     evalHead(lambdaBody.car)
