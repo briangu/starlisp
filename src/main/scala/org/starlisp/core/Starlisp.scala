@@ -392,83 +392,83 @@ class Runtime {
   private final def evalTail(inobj: LispObject): LispObject = {
     var obj = inobj
     while (true) {
-      if (obj.isInstanceOf[Symbol]) {
-        return (obj.asInstanceOf[Symbol]).value
-      } else if (obj.isInstanceOf[Cell]) {
-        val list = obj.asInstanceOf[Cell]
-        if (list.car eq Symbol._if) {
-          val res = evalHead((list.Cdr[Cell]).car)
-          if (res != null) {
-            obj = list.Cdr[Cell].Cdr[Cell].car
-          } else if (list.Cdr[Cell].Cdr[Cell].cdr != null) {
-            obj = list.Cdr[Cell].Cdr[Cell].Cdr[Cell].car
+      obj match {
+        case symbol: Symbol => return symbol.value
+        case list: Cell => {
+          val list = obj.asInstanceOf[Cell]
+          if (list.car eq Symbol._if) {
+            val res = evalHead((list.Cdr[Cell]).car)
+            if (res != null) {
+              obj = list.Cdr[Cell].Cdr[Cell].car
+            } else if (list.Cdr[Cell].Cdr[Cell].cdr != null) {
+              obj = list.Cdr[Cell].Cdr[Cell].Cdr[Cell].car
+            } else {
+              return null
+            }
+          } else if (list.car eq Symbol.quote) {
+            return (list.Cdr[Cell]).car
+          } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
+            return list
           } else {
-            return null
-          }
-        } else if (list.car eq Symbol.quote) {
-          return (list.Cdr[Cell]).car
-        } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
-          return list
-        } else {
-          val first = evalHead(list.car)
-          if (first.isInstanceOf[Cell]) {
-            val f1rst = first.asInstanceOf[Cell]
-            if (f1rst.car eq Symbol.lambda) {
-              val lambdaVar = f1rst.Cdr[Cell].car
-              var lambdaBody = f1rst.Cdr[Cell].Cdr[Cell]
-              val argList = list.Cdr[Cell]
-              if (lambdaVar != null) {
-                if (argList == null && lambdaVar.isInstanceOf[Cell])
-                  throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
-                var evalledArgs = evlis(argList)
-                if (lambdaVar.isInstanceOf[Symbol]) {
-                  bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
-                } else {
-                  var c = lambdaVar.asInstanceOf[Cell]
-                  var done = false
-                  while (!done) {
-                    if (c.cdr == null) {
-                      if (evalledArgs.cdr != null)
-                        throw new LispException(Symbol.internalError, "Too many args: " + obj)
-                      bind(c.Car[Symbol], evalledArgs.car)
-                      done = true
-                    } else if (!(c.cdr.isInstanceOf[Cell])) {
-                      bind(c.Car[Symbol], evalledArgs.car)
-                      bind(c.Cdr[Symbol], evalledArgs.cdr)
-                      done = true
-                    } else {
-                      bind(c.Car[Symbol], evalledArgs.car)
-                      evalledArgs = evalledArgs.Cdr[Cell]
-                      if (evalledArgs == null)
-                        throw new LispException(Symbol.internalError, "Too few args: " + obj)
-                      c = c.Cdr[Cell]
+            val first = evalHead(list.car)
+            if (first.isInstanceOf[Cell]) {
+              val f1rst = first.asInstanceOf[Cell]
+              if (f1rst.car eq Symbol.lambda) {
+                val lambdaVar = f1rst.Cdr[Cell].car
+                var lambdaBody = f1rst.Cdr[Cell].Cdr[Cell]
+                val argList = list.Cdr[Cell]
+                if (lambdaVar != null) {
+                  if (argList == null && lambdaVar.isInstanceOf[Cell])
+                    throw new LispException(Symbol.internalError, "Too few args (zero in fact): " + obj)
+                  var evalledArgs = evlis(argList)
+                  if (lambdaVar.isInstanceOf[Symbol]) {
+                    bind(lambdaVar.asInstanceOf[Symbol], evalledArgs)
+                  } else {
+                    var c = lambdaVar.asInstanceOf[Cell]
+                    var done = false
+                    while (!done) {
+                      if (c.cdr == null) {
+                        if (evalledArgs.cdr != null)
+                          throw new LispException(Symbol.internalError, "Too many args: " + obj)
+                        bind(c.Car[Symbol], evalledArgs.car)
+                        done = true
+                      } else if (!(c.cdr.isInstanceOf[Cell])) {
+                        bind(c.Car[Symbol], evalledArgs.car)
+                        bind(c.Cdr[Symbol], evalledArgs.cdr)
+                        done = true
+                      } else {
+                        bind(c.Car[Symbol], evalledArgs.car)
+                        evalledArgs = evalledArgs.Cdr[Cell]
+                        if (evalledArgs == null)
+                          throw new LispException(Symbol.internalError, "Too few args: " + obj)
+                        c = c.Cdr[Cell]
+                      }
                     }
                   }
                 }
+                if (lambdaBody == null) return null
+                while (lambdaBody.cdr != null) {
+                  evalHead(lambdaBody.car)
+                  lambdaBody = lambdaBody.Cdr[Cell]
+                }
+                obj = lambdaBody.car
+              } else if (f1rst.car eq Symbol.`macro`) {
+                obj = evalHead(cons(cons(Symbol.lambda, f1rst.Cdr[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
+              } else {
+                throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
               }
-              if (lambdaBody == null) return null
-              while (lambdaBody.cdr != null) {
-                evalHead(lambdaBody.car)
-                lambdaBody = lambdaBody.Cdr[Cell]
-              }
-              obj = lambdaBody.car
-            } else if (f1rst.car eq Symbol.`macro`) {
-              obj = evalHead(cons(cons(Symbol.lambda, f1rst.Cdr[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
+            } else if (first.isInstanceOf[Procedure]) {
+              return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.Cdr[Cell]))
             } else {
-              throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
+              throw new LispException(
+                Symbol.internalError,
+                "EVAL: %s is not a function name; try using a symbol instead. EXPR: %s".format(
+                  String.valueOf(first),
+                  Starlisp.toStringOrNull(obj)))
             }
-          } else if (first.isInstanceOf[Procedure]) {
-            return (first.asInstanceOf[Procedure]).applyArgs(evlisArray(list.Cdr[Cell]))
-          } else {
-            throw new LispException(
-              Symbol.internalError,
-              "EVAL: %s is not a function name; try using a symbol instead. EXPR: %s".format(
-                String.valueOf(first),
-                Starlisp.toStringOrNull(obj)))
           }
         }
-      } else {
-        return obj
+        case _ => return obj
       }
     }
     obj
