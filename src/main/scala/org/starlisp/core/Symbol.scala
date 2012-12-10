@@ -1,15 +1,42 @@
 package org.starlisp.core
 
 import java.io.UnsupportedEncodingException
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{AtomicLong, AtomicInteger}
 
-class SymbolContext {
+class Environment {
 
   val index = new java.util.HashMap[String, Symbol](1024)
 
-  val genSymCounter = new AtomicInteger()
+  private val DEFAULT_STACK_SIZE = 32768 * 2
+  private var stackSize = 0
+  private val stack = new Array[LispObject](DEFAULT_STACK_SIZE)
 
-  def gensym = new Symbol("G%d".format(genSymCounter.getAndIncrement()))
+  def gensym = Symbol.gensym
+
+  def save { stackSize += 1 }
+  def restore {
+    stackSize -= 1
+    while (stack(stackSize) != null) {
+      (stack(stackSize).asInstanceOf[Symbol]).value = stack(stackSize - 1)
+      stack(stackSize) = null
+      stack(stackSize - 1) = null
+      stackSize -= 2
+    }
+  }
+
+  def bind(sbl: Symbol, value: LispObject) {
+    val oldValue: LispObject = sbl.value
+    sbl.value = value
+    var i = stackSize - 1
+    while (stack(i) != null) {
+      if (stack(i) eq sbl) return
+      i -= 2
+    }
+    stack(stackSize) = oldValue
+    stackSize += 1;
+    stack(stackSize) = sbl
+    stackSize += 1;
+  }
 
   def getSymbols: Cell = {
     import scala.collection.JavaConversions._
@@ -29,7 +56,9 @@ class SymbolContext {
 
 object Symbol {
 
-  private val context = new SymbolContext
+  private val env = new Environment
+
+  private val genSymCounter = new AtomicLong()
 
   val internalError = intern("internal-error")
   val t: Symbol = intern("t")
@@ -53,14 +82,16 @@ object Symbol {
     case e: UnsupportedEncodingException => ;
   }
 
+  def gensym = new Symbol("G%d".format(genSymCounter.getAndIncrement()))
+
   // TODO: actually clone
-  def cloneSymbols() : SymbolContext = context
+  def chain() : Environment = env
 
-  def isInterned(sym: Symbol) = context.isInterned(sym)
+  def isInterned(sym: Symbol) = env.isInterned(sym)
 
-  def intern(sym: Symbol) : Symbol = intern(context, sym)
+  def intern(sym: Symbol) : Symbol = intern(env, sym)
   def intern(str: String) : Symbol = intern(new Symbol(str))
-  def intern(context: SymbolContext, sym: Symbol): Symbol = {
+  def intern(context: Environment, sym: Symbol): Symbol = {
     val sbl = context.findSymbol(sym.name)
     if (sbl == null) {
       context.index.put(sym.name, sym)

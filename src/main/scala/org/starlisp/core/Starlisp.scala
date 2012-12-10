@@ -6,12 +6,10 @@ package org.starlisp.core
 **       * Think about lexical scoping... dynamic scoping might be more of a PITA than I thought initially (dynamic wins on
 **         ease of implementation... _but_). Lexical might not need be so difficult given passable environments, also nlambdas
 **         as a method for recursion would be sort of cute in this case (or do we use the y-combinator? =p)
-**       * Think about a procedure abstract class or interface, for all things having something called "apply"
 **       * Try later to move away from pure list structure for exprs, instead substituting with a subclass of Procedure
 **         possibly internally containing the same list structure, this is going to make lexical scoping among other things
 **         much smoother (as well as removing serious amounts of clutter from eval)
 **       * Fix up EOF-handling
-**       * Fix up equals for LispNumbers and more
 */
 
 import java.io._
@@ -314,40 +312,9 @@ class Runtime {
 
   var stopped = false
 
-  private val symbolContext = Symbol.cloneSymbols
+  private val env = Symbol.chain
 
-  // Runtime specific stack and components
-  private val DEFAULT_STACK_SIZE = 32768 * 2
-  private var stackSize = 0
-  private val stack = new Array[LispObject](DEFAULT_STACK_SIZE)
-
-  private def intern(str: String) = symbolContext.intern(str)
   private def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
-
-  private def saveEnvironment { stackSize += 1 }
-  private def restoreEnvironment {
-    stackSize -= 1
-    while (stack(stackSize) != null) {
-      (stack(stackSize).asInstanceOf[Symbol]).value = stack(stackSize - 1)
-      stack(stackSize) = null
-      stack(stackSize - 1) = null
-      stackSize -= 2
-    }
-  }
-
-  private def bind(sbl: Symbol, value: LispObject) {
-    val oldValue: LispObject = sbl.value
-    sbl.value = value
-    var i = stackSize - 1
-    while (stack(i) != null) {
-      if (stack(i) eq sbl) return
-      i -= 2
-    }
-    stack(stackSize) = oldValue
-    stackSize += 1;
-    stack(stackSize) = sbl
-    stackSize += 1;
-  }
 
   private def evlis(list: Cell): Cell = {
     if (list == null) return null
@@ -374,11 +341,11 @@ class Runtime {
   }
 
   private def evalHead(obj: LispObject): LispObject = {
-    saveEnvironment
+    env.save
     try {
       evalTail(obj)
     } finally {
-      restoreEnvironment
+      env.restore
     }
   }
 
@@ -413,7 +380,7 @@ class Runtime {
                   if (lambdaBody == null) return null
                   val lambdaVar = first.Cdr[Cell].car
                   (Option(lambdaVar), Option(evlis(list.Cdr[Cell]))) match {
-                    case (Some(symbol: Symbol), Some(args: Cell)) => bind(symbol, args)
+                    case (Some(symbol: Symbol), Some(args: Cell)) => env.bind(symbol, args)
                     case (Some(head: Cell), Some(args: Cell)) => {
                       var cell = head
                       var evalledArgs = args
@@ -422,14 +389,14 @@ class Runtime {
                         if (cell.cdr == null) {
                           if (evalledArgs.cdr != null)
                             throw new LispException(Symbol.internalError, "Too many args: " + obj)
-                          bind(cell.Car[Symbol], evalledArgs.car)
+                          env.bind(cell.Car[Symbol], evalledArgs.car)
                           done = true
                         } else if (!(cell.cdr.isInstanceOf[Cell])) {
-                          bind(cell.Car[Symbol], evalledArgs.car)
-                          bind(cell.Cdr[Symbol], evalledArgs.cdr)
+                          env.bind(cell.Car[Symbol], evalledArgs.car)
+                          env.bind(cell.Cdr[Symbol], evalledArgs.cdr)
                           done = true
                         } else {
-                          bind(cell.Car[Symbol], evalledArgs.car)
+                          env.bind(cell.Car[Symbol], evalledArgs.car)
                           evalledArgs = evalledArgs.Cdr[Cell]
                           if (evalledArgs == null)
                             throw new LispException(Symbol.internalError, "Too few args: " + obj)
@@ -452,7 +419,16 @@ class Runtime {
                   throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
                 }
               }
-              case proc: Procedure => return proc.applyArgs(evlisArray(list.Cdr[Cell]))
+              case proc: Procedure => {
+                val args = evlisArray(list.Cdr[Cell])
+                if (args.length < proc.minArgs) {
+                  throw new LispException(Symbol.internalError, "Too few args when calling procedure: " + toString)
+                }
+                if (args.length > proc.maxArgs) {
+                  throw new LispException(Symbol.internalError, "Too many args when calling procedure: " + toString)
+                }
+                return proc(args)
+              }
               case unknown => {
                 throw new LispException(
                   Symbol.internalError,
@@ -470,9 +446,11 @@ class Runtime {
   }
 
   // Initialize the Runtime-specific methods
+  private def intern(str: String) = env.intern(str)
+
   intern("eval").value = new LispFn1[LispObject]("eval") {def apply(o: Array[LispObject]) = eval(o(0))}
-  intern("symbols").value = new LispFn("symbols") {def apply(o: Array[LispObject]) = symbolContext.getSymbols}
-  intern("gensym").value = new LispFn("gensym") {def apply(o: Array[LispObject]) = symbolContext.gensym}
+  intern("symbols").value = new LispFn("symbols") {def apply(o: Array[LispObject]) = env.getSymbols}
+  intern("gensym").value = new LispFn("gensym") {def apply(o: Array[LispObject]) = env.gensym}
   intern("make-runnable").value = new LispFn("make-runnable", 1) {
     def apply(o: Array[LispObject]) = {
       new JavaObject(new Runnable {
