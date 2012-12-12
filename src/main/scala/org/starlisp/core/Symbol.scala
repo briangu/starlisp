@@ -1,7 +1,7 @@
 package org.starlisp.core
 
 import java.io.UnsupportedEncodingException
-import java.util.concurrent.atomic.{AtomicLong, AtomicInteger}
+import java.util.concurrent.atomic.AtomicLong
 
 class Environment {
 
@@ -10,6 +10,9 @@ class Environment {
   private val DEFAULT_STACK_SIZE = 32768 * 2
   private var stackSize = 0
   private val stack = new Array[LispObject](DEFAULT_STACK_SIZE)
+
+  // TODO: chain
+  def chain() : Environment = this
 
   def gensym = Symbol.gensym
 
@@ -84,8 +87,7 @@ object Symbol {
 
   def gensym = new Symbol("G%d".format(genSymCounter.getAndIncrement()))
 
-  // TODO: actually clone
-  def chain() : Environment = env
+  def chain() = env.chain()
 
   def isInterned(sym: Symbol) = env.isInterned(sym)
 
