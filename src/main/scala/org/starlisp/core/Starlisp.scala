@@ -289,40 +289,40 @@ object Starlisp {
     }
   }
 
-  private[core] val number: Symbol = intern("number")
-  private[core] val integer: Symbol = intern("integer")
-  private[core] val fixnum: Symbol = intern("fixnum")
-  private[core] val bignum: Symbol = intern("bignum")
-  private[core] val flonum: Symbol = intern("flonum")
-  private[core] val symbol: Symbol = intern("symbol")
-  private[core] val cons: Symbol = intern("cons")
-  private[core] val procedure: Symbol = intern("procedure")
-  private[core] val subr: Symbol = intern("subr")
-  private[core] val array: Symbol = intern("array")
-  private[core] val string: Symbol = intern("string")
-  private[core] val javaObject: Symbol = intern("java-object")
-  private[core] val javaMethod: Symbol = intern("java-method")
-  private[core] val exception: Symbol = intern("exception")
-  private[core] val charmander: Symbol = intern("char")
-  private[core] val stream: Symbol = intern("stream")
-  private[core] val list: Symbol = intern("list")
+  private val number: Symbol = intern("number")
+  private val integer: Symbol = intern("integer")
+  private val fixnum: Symbol = intern("fixnum")
+  private val bignum: Symbol = intern("bignum")
+  private val flonum: Symbol = intern("flonum")
+  private val symbol: Symbol = intern("symbol")
+  private val cons: Symbol = intern("cons")
+  private val procedure: Symbol = intern("procedure")
+  private val subr: Symbol = intern("subr")
+  private val array: Symbol = intern("array")
+  private val string: Symbol = intern("string")
+  private val javaObject: Symbol = intern("java-object")
+  private val javaMethod: Symbol = intern("java-method")
+  private val exception: Symbol = intern("exception")
+  private val charmander: Symbol = intern("char")
+  private val stream: Symbol = intern("stream")
+  private val list: Symbol = intern("list")
 }
 
 class Runtime {
 
   var stopped = false
 
-  private val env = Symbol.chain
+  private val env = Environment.root.chain
 
   private def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
 
   private def evlis(list: Cell): Cell = {
     if (list == null) return null
-    var last = new Cell(evalHead(list.car), null)
+    var last = new Cell(eval(list.car), null)
     val result = last
     var c = list.Cdr[Cell]
     while (c != null) {
-      last = (last.Cdr(new Cell(evalHead(c.car), null))).asInstanceOf[Cell]
+      last = (last.Cdr(new Cell(eval(c.car), null))).asInstanceOf[Cell]
       c = c.Cdr[Cell]
     }
     result
@@ -333,14 +333,14 @@ class Runtime {
     var i = 0
     var c = list
     while (c != null) {
-      res(i) = evalHead(c.car)
+      res(i) = eval(c.car)
       i += 1
       c = c.Cdr[Cell]
     }
     res
   }
 
-  private def evalHead(obj: LispObject): LispObject = {
+  def eval(obj: LispObject): LispObject = {
     env.save
     try {
       evalTail(obj)
@@ -349,11 +349,6 @@ class Runtime {
     }
   }
 
-  /**
-   * Evaluate code in the current dynamic environment
-   */
-  def eval(obj: LispObject) = evalHead(obj)
-
   private def evalTail(inobj: LispObject): LispObject = {
     var obj = inobj
     while (true) {
@@ -361,7 +356,7 @@ class Runtime {
         case symbol: Symbol => return symbol.value
         case list: Cell => {
           if (list.car eq Symbol._if) {
-            Option(evalHead((list.Cdr[Cell]).car)) match {
+            Option(eval((list.Cdr[Cell]).car)) match {
               case Some(_) => obj = list.Cdr[Cell].Cdr[Cell].car
               case None => Option(list.Cdr[Cell].Cdr[Cell].Cdr[Cell]) match {
                 case Some(cell) => obj = cell.car
@@ -373,7 +368,7 @@ class Runtime {
           } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
             return list
           } else {
-            evalHead(list.car) match {
+            eval(list.car) match {
               case first: Cell => {
                 if (first.car eq Symbol.lambda) {
                   var lambdaBody = first.Cdr[Cell].Cdr[Cell]
@@ -409,12 +404,12 @@ class Runtime {
                     case (_, _) => ;
                   }
                   while (lambdaBody.cdr != null) {
-                    evalHead(lambdaBody.car)
+                    eval(lambdaBody.car)
                     lambdaBody = lambdaBody.Cdr[Cell]
                   }
                   obj = lambdaBody.car
                 } else if (first.car eq Symbol.`macro`) {
-                  obj = evalHead(cons(cons(Symbol.lambda, first.Cdr[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
+                  obj = eval(cons(cons(Symbol.lambda, first.Cdr[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
                 } else {
                   throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
                 }

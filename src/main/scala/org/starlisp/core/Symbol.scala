@@ -66,9 +66,13 @@ class Environment(outer: Option[Environment] = None) {
   def intern(sym: Symbol): Symbol = Symbol.intern(this, sym)
 }
 
+object Environment {
+  val root = new Environment
+}
+
 object Symbol {
 
-  private val env = new Environment
+  private val env = Environment.root
 
   private val genSymCounter = new AtomicLong()
 
