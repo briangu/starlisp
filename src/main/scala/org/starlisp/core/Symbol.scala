@@ -3,7 +3,7 @@ package org.starlisp.core
 import java.io.UnsupportedEncodingException
 import java.util.concurrent.atomic.AtomicLong
 
-class Environment {
+class Environment(outer: Option[Environment] = None) {
 
   val index = new java.util.HashMap[String, Symbol](1024)
 
@@ -51,7 +51,16 @@ class Environment {
   }
 
   def isInterned(sym: Symbol) = index.containsKey(sym.name)
-  def findSymbol(str: String) = index.get(str)
+
+  def find(str: String): Symbol = {
+    Option(index.get(str)) match {
+      case Some(symbol) => symbol
+      case None => outer match {
+        case Some(outer) => outer.find(str)
+        case None => null
+      }
+    }
+  }
 
   def intern(str: String): Symbol = intern(new Symbol(str))
   def intern(sym: Symbol): Symbol = Symbol.intern(this, sym)
@@ -94,7 +103,7 @@ object Symbol {
   def intern(sym: Symbol) : Symbol = intern(env, sym)
   def intern(str: String) : Symbol = intern(new Symbol(str))
   def intern(context: Environment, sym: Symbol): Symbol = {
-    val sbl = context.findSymbol(sym.name)
+    val sbl = context.find(sym.name)
     if (sbl == null) {
       context.index.put(sym.name, sym)
       sym
