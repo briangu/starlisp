@@ -134,7 +134,8 @@ class LispBigInt(val n: BigInt) extends LispInteger {
   def promote(n: LispNumber) = n match {
     case o: LispBigDecimal => o
     case o: LispBigInt => o
-    case o: LispNumber => new LispBigInt(o.toBigInt)
+    case o: LispFlonum => new LispBigDecimal(o.toBigDecimal)
+    case o: LispFixnum => new LispBigInt(o.toBigInt)
   }
 
   def toJavaInt: Int = n.intValue
@@ -182,6 +183,7 @@ class LispFlonum(val n: Double) extends LispNumber {
   def negP: Boolean = n < 0
 
   def promote(n: LispNumber) = n match {
+    case o: LispBigInt => new LispBigDecimal(o.toBigDecimal)
     case o: LispFixnum => new LispFlonum(o.toJavaDouble)
     case o: LispNumber => o
   }
