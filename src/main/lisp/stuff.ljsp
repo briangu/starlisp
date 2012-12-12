@@ -156,7 +156,7 @@
 
 ;; KLUDGE: Hinges on dynamic scoping (bad if I decide to change this in the future)
 ;; Currently variables are evaluated in backwards order, but this is currently not a problem
-(defmacro let (a) (displace a
+(defmacro let-dynamic-scope (a) (displace a
   ((lambda (vars var-args parse-bindings)
      (setq vars nil)
      (setq var-args nil)
@@ -177,6 +177,21 @@
                    (setq vars (cons (car lst) vars))
                    (setq var-args (cons nil var-args)))))
             (parse-bindings (cdr lst)))))))))
+
+;; http://www.oki-osk.jp/esc/llsp/1/l2init
+#;(defmacro let (args &rest body)
+  ((lambda (vars vals)
+     (defun vars (x)
+       (if (null x) nil
+         (cons (if (atom (car x)) (car x) (caar x))
+               (vars (cdr x)))))
+     (defun vals (x)
+       (if (null x) nil
+         (cons (if (atom (car x)) nil (cadr (car x)))
+               (vals (cdr x)))))
+     (cons (cons lambda (cons (vars args) body))
+           (vals args)))
+   nil nil))
 
 (defmacro let* (a) (displace a
   (let ((clauses (cadr a))

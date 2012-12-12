@@ -2,19 +2,34 @@ package org.starlisp.core
 
 import java.io.UnsupportedEncodingException
 import java.util.concurrent.atomic.AtomicLong
+import collection.mutable
 
 class Environment(outer: Option[Environment] = None) {
 
-  val index = new java.util.HashMap[String, Symbol](1024)
+  val index = new mutable.HashMap[String, Symbol]
 
+  override def toString(): String = index map {case (k,v) => "%s => %s".format(k,v)} mkString("\n")
+
+  def printChain() {
+    println("--->")
+    println(toString())
+    outer match {
+      case Some(env) => env.printChain()
+      case None => ;
+    }
+  }
+
+  def chain() : Environment = {
+   // printChain()
+    new Environment(Some(this))
+  }
+
+  def gensym = Symbol.gensym
+
+/*
   private val DEFAULT_STACK_SIZE = 32768 * 2
   private var stackSize = 0
   private val stack = new Array[LispObject](DEFAULT_STACK_SIZE)
-
-  // TODO: chain
-  def chain() : Environment = this
-
-  def gensym = Symbol.gensym
 
   def save { stackSize += 1 }
   def restore {
@@ -40,9 +55,10 @@ class Environment(outer: Option[Environment] = None) {
     stack(stackSize) = sbl
     stackSize += 1;
   }
+*/
+  def bind(sbl: Symbol, value: LispObject) = index.getOrElseUpdate(sbl.name, sbl).value = value
 
   def getSymbols: Cell = {
-    import scala.collection.JavaConversions._
     var symbols: Cell = null
     index.foreach{ case (name, sym) =>
       symbols = new Cell(sym, symbols)
@@ -50,10 +66,10 @@ class Environment(outer: Option[Environment] = None) {
     symbols
   }
 
-  def isInterned(sym: Symbol) = index.containsKey(sym.name)
+  def isInterned(sym: Symbol) = find(sym.name) != null
 
   def find(str: String): Symbol = {
-    Option(index.get(str)) match {
+    index.get(str) match {
       case Some(symbol) => symbol
       case None => outer match {
         case Some(outer) => outer.find(str)
@@ -63,7 +79,7 @@ class Environment(outer: Option[Environment] = None) {
   }
 
   def intern(str: String): Symbol = intern(new Symbol(str))
-  def intern(sym: Symbol): Symbol = Symbol.intern(this, sym)
+  def intern(sym: Symbol): Symbol = index.getOrElseUpdate(sym.name, sym)
 }
 
 object Environment {
@@ -104,17 +120,8 @@ object Symbol {
 
   def isInterned(sym: Symbol) = env.isInterned(sym)
 
-  def intern(sym: Symbol) : Symbol = intern(env, sym)
+  def intern(sym: Symbol) : Symbol = env.intern(sym)
   def intern(str: String) : Symbol = intern(new Symbol(str))
-  def intern(context: Environment, sym: Symbol): Symbol = {
-    val sbl = context.find(sym.name)
-    if (sbl == null) {
-      context.index.put(sym.name, sym)
-      sym
-    } else {
-      sbl
-    }
-  }
 }
 
 class Symbol(var name: String = null) extends LispObject {

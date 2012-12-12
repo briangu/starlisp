@@ -312,51 +312,43 @@ class Runtime {
 
   var stopped = false
 
-  private val env = Environment.root.chain
+  private val globalEnv = Environment.root.chain
 
   private def cons(car: LispObject, cdr: LispObject): Cell = new Cell(car, cdr)
 
-  private def evlis(list: Cell): Cell = {
+  private def evlis(list: Cell, env: Environment): Cell = {
     if (list == null) return null
-    var last = new Cell(eval(list.car), null)
+    var last = new Cell(eval(list.car, env), null)
     val result = last
     var c = list.Cdr[Cell]
     while (c != null) {
-      last = (last.Cdr(new Cell(eval(c.car), null))).asInstanceOf[Cell]
+      last = (last.Cdr(new Cell(eval(c.car, env), null))).asInstanceOf[Cell]
       c = c.Cdr[Cell]
     }
     result
   }
 
-  private def evlisArray(list: Cell): Array[LispObject] = {
+  private def evlisArray(list: Cell, env: Environment): Array[LispObject] = {
     val res: Array[LispObject] = new Array[LispObject](if ((list == null)) 0 else list.length)
     var i = 0
     var c = list
     while (c != null) {
-      res(i) = eval(c.car)
+      res(i) = eval(c.car, env)
       i += 1
       c = c.Cdr[Cell]
     }
     res
   }
 
-  def eval(obj: LispObject): LispObject = {
-    env.save
-    try {
-      evalTail(obj)
-    } finally {
-      env.restore
-    }
-  }
-
-  private def evalTail(inobj: LispObject): LispObject = {
+  // TODO: remove inobj and make recursive
+  def eval(inobj: LispObject, env: Environment = globalEnv): LispObject = {
     var obj = inobj
     while (true) {
       obj match {
         case symbol: Symbol => return symbol.value
         case list: Cell => {
           if (list.car eq Symbol._if) {
-            Option(eval((list.Cdr[Cell]).car)) match {
+            Option(eval((list.Cdr[Cell]).car, env)) match {
               case Some(_) => obj = list.Cdr[Cell].Cdr[Cell].car
               case None => Option(list.Cdr[Cell].Cdr[Cell].Cdr[Cell]) match {
                 case Some(cell) => obj = cell.car
@@ -368,14 +360,15 @@ class Runtime {
           } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
             return list
           } else {
-            eval(list.car) match {
+            eval(list.car, env) match {
               case first: Cell => {
                 if (first.car eq Symbol.lambda) {
+                  val closure = env.chain()
                   var lambdaBody = first.Cdr[Cell].Cdr[Cell]
                   if (lambdaBody == null) return null
                   val lambdaVar = first.Cdr[Cell].car
-                  (Option(lambdaVar), Option(evlis(list.Cdr[Cell]))) match {
-                    case (Some(symbol: Symbol), Some(args: Cell)) => env.bind(symbol, args)
+                  (Option(lambdaVar), Option(evlis(list.Cdr[Cell], closure))) match {
+                    case (Some(symbol: Symbol), Some(args: Cell)) => closure.bind(symbol, args)
                     case (Some(head: Cell), Some(args: Cell)) => {
                       var cell = head
                       var evalledArgs = args
@@ -384,14 +377,14 @@ class Runtime {
                         if (cell.cdr == null) {
                           if (evalledArgs.cdr != null)
                             throw new LispException(Symbol.internalError, "Too many args: " + obj)
-                          env.bind(cell.Car[Symbol], evalledArgs.car)
+                          closure.bind(cell.Car[Symbol], evalledArgs.car)
                           done = true
                         } else if (!(cell.cdr.isInstanceOf[Cell])) {
-                          env.bind(cell.Car[Symbol], evalledArgs.car)
-                          env.bind(cell.Cdr[Symbol], evalledArgs.cdr)
+                          closure.bind(cell.Car[Symbol], evalledArgs.car)
+                          closure.bind(cell.Cdr[Symbol], evalledArgs.cdr)
                           done = true
                         } else {
-                          env.bind(cell.Car[Symbol], evalledArgs.car)
+                          closure.bind(cell.Car[Symbol], evalledArgs.car)
                           evalledArgs = evalledArgs.Cdr[Cell]
                           if (evalledArgs == null)
                             throw new LispException(Symbol.internalError, "Too few args: " + obj)
@@ -404,23 +397,23 @@ class Runtime {
                     case (_, _) => ;
                   }
                   while (lambdaBody.cdr != null) {
-                    eval(lambdaBody.car)
+                    eval(lambdaBody.car, closure)
                     lambdaBody = lambdaBody.Cdr[Cell]
                   }
                   obj = lambdaBody.car
                 } else if (first.car eq Symbol.`macro`) {
-                  obj = eval(cons(cons(Symbol.lambda, first.Cdr[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)))
+                  obj = eval(cons(cons(Symbol.lambda, first.Cdr[Cell]), cons(cons(Symbol.quote, cons(list, null)), null)), env)
                 } else {
                   throw new LispException(Symbol.internalError, "You can't just pretend lists to be functions, when they aren't: " + obj.toString)
                 }
               }
               case proc: Procedure => {
-                val args = evlisArray(list.Cdr[Cell])
+                val args = evlisArray(list.Cdr[Cell], env)
                 if (args.length < proc.minArgs) {
-                  throw new LispException(Symbol.internalError, "Too few args when calling procedure: " + toString)
+                  throw new LispException(Symbol.internalError, "Too few args when calling procedure: " + proc.toString)
                 }
                 if (args.length > proc.maxArgs) {
-                  throw new LispException(Symbol.internalError, "Too many args when calling procedure: " + toString)
+                  throw new LispException(Symbol.internalError, "Too many args when calling procedure: " + proc.toString)
                 }
                 return proc(args)
               }
@@ -441,16 +434,16 @@ class Runtime {
   }
 
   // Initialize the Runtime-specific methods
-  private def intern(str: String) = env.intern(str)
+  private def intern(str: String) = globalEnv.intern(str)
 
-  intern("eval").value = new LispFn1[LispObject]("eval") {def apply(o: Array[LispObject]) = eval(o(0))}
-  intern("symbols").value = new LispFn("symbols") {def apply(o: Array[LispObject]) = env.getSymbols}
-  intern("gensym").value = new LispFn("gensym") {def apply(o: Array[LispObject]) = env.gensym}
+  intern("eval").value = new LispFn1[LispObject]("eval") {def apply(o: Array[LispObject]) = eval(o(0), globalEnv)}
+  intern("symbols").value = new LispFn("symbols") {def apply(o: Array[LispObject]) = globalEnv.getSymbols}
+  intern("gensym").value = new LispFn("gensym") {def apply(o: Array[LispObject]) = globalEnv.gensym}
   intern("make-runnable").value = new LispFn("make-runnable", 1) {
     def apply(o: Array[LispObject]) = {
       new JavaObject(new Runnable {
         def run {
-          eval(cons(o(0), null))
+          eval(cons(o(0), null), globalEnv)
         }
       })
     }
@@ -458,11 +451,11 @@ class Runtime {
   intern("%try").value = new LispFn2[LispObject, LispObject]("%try") {
     def apply(o: Array[LispObject]) = {
       try {
-        eval(cons(a(o), null))
+        eval(cons(a(o), null), globalEnv)
       }
       catch {
         case e: Exception => {
-          eval(cons(b(o), cons(new JavaObject(e), null)))
+          eval(cons(b(o), cons(new JavaObject(e), null)), globalEnv)
         }
       }
     }
