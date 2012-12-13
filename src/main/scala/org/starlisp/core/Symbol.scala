@@ -68,6 +68,7 @@ class Environment(outer: Option[Environment] = None) {
 
   def isInterned(sym: Symbol) = find(sym.name) != null
 
+  def find(symbol: Symbol): Symbol = find(symbol.name)
   def find(str: String): Symbol = {
     index.get(str) match {
       case Some(symbol) => symbol

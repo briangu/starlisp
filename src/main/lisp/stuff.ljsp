@@ -156,27 +156,29 @@
 
 ;; KLUDGE: Hinges on dynamic scoping (bad if I decide to change this in the future)
 ;; Currently variables are evaluated in backwards order, but this is currently not a problem
-(defmacro let-dynamic-scope (a) (displace a
-  ((lambda (vars var-args parse-bindings)
-     (setq vars nil)
-     (setq var-args nil)
-     (parse-bindings (cadr a))
-     (cons (cons (quote lambda) (cons vars (cddr a)))
-           var-args))
-   nil
-   nil
-   (lambda (lst)
-     (if (end? lst)
-         nil
-         ((lambda ()
-            (if (list? (car lst))
-                ((lambda ()
-                   (setq vars (cons (caar lst) vars))
-                   (setq var-args (cons (cadar lst) var-args))))
-                ((lambda ()
-                   (setq vars (cons (car lst) vars))
-                   (setq var-args (cons nil var-args)))))
-            (parse-bindings (cdr lst)))))))))
+(defmacro let (a)
+  (displace a
+    ((lambda (vars var-args parse-bindings)
+       (setq vars nil)
+       (setq var-args nil)
+       (parse-bindings (cadr a))
+       (cons (cons (quote lambda) (cons vars (cddr a))) var-args))
+     nil
+     nil
+     (lambda (lst)
+       (if (end? lst)
+           nil
+           ((lambda ()
+              (if (list? (car lst))
+                  ((lambda ()
+                     (setq vars (cons (caar lst) vars))
+                     (setq var-args (cons (cadar lst) var-args))))
+                  ((lambda ()
+                     (setq vars (cons (car lst) vars))
+                     (setq var-args (cons nil var-args)))))
+              (parse-bindings (cdr lst))))))
+    )
+  ))
 
 ;; http://www.oki-osk.jp/esc/llsp/1/l2init
 #;(defmacro let (args &rest body)

@@ -3,7 +3,11 @@ package org.starlisp.core
 import scala.Array
 
 abstract class LispFn(name : String = "", minArgs: Int = 0, maxArgs: Int = Integer.MAX_VALUE)
-  extends Procedure(name, minArgs, maxArgs) {}
+  extends Procedure(name, minArgs, maxArgs)
+{
+  def apply(objects: Array[LispObject]): LispObject
+  def apply(env: Environment, objects: Array[LispObject]): LispObject = apply(objects)
+}
 
 abstract class LispFn1[A <: LispObject](name : String = "", minArgs: Int = 0, maxArgs: Int = Integer.MAX_VALUE) extends LispFn(name, minArgs, maxArgs) {
   def a(o: Array[LispObject]): A = o(0).asInstanceOf[A]
