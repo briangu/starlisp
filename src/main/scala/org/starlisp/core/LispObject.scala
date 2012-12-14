@@ -1,3 +1,5 @@
 package org.starlisp.core
 
-class LispObject {}
+class LispObject {
+  def as[T] = this.asInstanceOf[T]
+}

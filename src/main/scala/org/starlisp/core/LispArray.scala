@@ -26,7 +26,7 @@ class LispArray(protected val ar: Array[LispObject]) extends LispObject {
     val sb: StringBuffer = new StringBuffer
     sb.append("#(")
     for (o <- ar) {
-      sb.append(Starlisp.toStringOrNull(o))
+      sb.append(Starlisp.toStringOrNil(o))
       sb.append(' ')
     }
     sb.setLength(sb.length - 1)

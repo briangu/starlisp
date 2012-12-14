@@ -2,7 +2,7 @@ package org.starlisp.core
 
 import java.io._
 
-class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispInputStream {
+class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends LispObject with LispInputStream {
 
   case class ListEnd() extends LispObject
   class LispDottedCdr(var obj: LispObject = null) extends LispObject {}
@@ -12,8 +12,9 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
   private val listEnd = new ListEnd
   private val dottedCdr = new LispDottedCdr
 
-  def this(is: InputStream, os: OutputStream) {
-    this(if (is != null) new InputStreamReader(is, "UTF-8") else null,
+  def this(env: Environment, is: InputStream, os: OutputStream) {
+    this(env,
+         if (is != null) new InputStreamReader(is, "UTF-8") else null,
          if (os != null) new PrintWriter(os, true) else null)
   }
 
@@ -75,7 +76,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
       dottedCdr
     } else {
       // TODO: make more efficient
-      if (LispNumber.isNumber(str)) LispNumber.tryParse(str) else Symbol.intern(str)
+      if (LispNumber.isNumber(str)) LispNumber.tryParse(str) else env.intern(str)
     }
   }
 
@@ -89,7 +90,7 @@ class LispTokenizer(in: Reader, out: PrintWriter) extends LispObject with LispIn
         tokenizer.nextToken()
       }
       val symStr = sb.toString
-      if (symStr.equals("nil")) null else Symbol.intern(symStr);
+      if (symStr.equals("nil")) null else env.intern(symStr);
     } finally {
       tokenizer.useSExprSyntaxMode()
     }

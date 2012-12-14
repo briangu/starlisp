@@ -49,13 +49,13 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
     var done = false
     while (!done) {
       if (list.cdr == null) {
-        sb.append(Starlisp.toStringOrNull(list.car))
+        sb.append(Starlisp.toStringOrNil(list.car))
         done = true
       } else if (!(list.cdr.isInstanceOf[Cell])) {
-        sb.append(Starlisp.toStringOrNull(list.car)).append(" . ").append(list.cdr.toString)
+        sb.append(Starlisp.toStringOrNil(list.car)).append(" . ").append(list.cdr.toString)
         done = true
       } else {
-        sb.append(Starlisp.toStringOrNull(list.car)).append(" ")
+        sb.append(Starlisp.toStringOrNil(list.car)).append(" ")
         list = list.cdr.asInstanceOf[Cell]
       }
     }

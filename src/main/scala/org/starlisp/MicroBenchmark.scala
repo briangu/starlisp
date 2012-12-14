@@ -6,7 +6,7 @@ import java.io.StringBufferInputStream
 object MicroBenchmark {
   def warmup(runtime: Runtime) {
     Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("\n>>");
-    val list = Starlisp.read(Symbol.standardInput.value.asInstanceOf[LispInputStream])
+    val list = runtime.read(runtime.standardInput.value.asInstanceOf[LispInputStream])
     val start = System.currentTimeMillis()
     (0 until 100000).foreach{ idx =>
       runtime.eval(list)
@@ -21,7 +21,7 @@ object MicroBenchmark {
     var sum: Long = 0
     (0 until 100000).foreach { idx =>
       val start = System.currentTimeMillis()
-      Starlisp.read(new LispStreamImpl(new StringBufferInputStream(fixed), null))
+      runtime.read(new LispStreamImpl(new StringBufferInputStream(fixed), null))
       sum += System.currentTimeMillis() - start
     }
     println("\n\t time = %d %f".format(sum, (sum / 100000.0)))
@@ -32,7 +32,7 @@ object MicroBenchmark {
       try {
         while(!runtime.stopped) {
           Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("\n>>");
-          val list = Starlisp.read(Symbol.standardInput.value.asInstanceOf[LispInputStream])
+          val list = runtime.read(runtime.standardInput.value.asInstanceOf[LispInputStream])
           println("\n\t %s".format(runtime.eval(list)))
         }
       } catch {
@@ -59,7 +59,7 @@ object MicroBenchmark {
       try {
         while(!runtime.stopped) {
           Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("\n>>");
-          val list = Starlisp.read(Symbol.standardInput.value.asInstanceOf[LispInputStream])
+          val list = runtime.read(runtime.standardInput.value.asInstanceOf[LispInputStream])
           if (start == 0) start = System.currentTimeMillis()
           runtime.eval(list)
           now = System.currentTimeMillis()

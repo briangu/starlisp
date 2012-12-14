@@ -7,10 +7,10 @@ object REPL extends App {
   while(!runtime.stopped) {
     try {
       val out = Symbol.standardOutput.value.asInstanceOf[LispOutputStream]
-      val in = Symbol.standardInput.value.asInstanceOf[LispInputStream]
+      val in = runtime.standardInput.value.asInstanceOf[LispInputStream]
       while(!runtime.stopped) {
         out.write("\n>> ");
-        Starlisp.prin1(runtime.eval(Starlisp.read(in)), out)
+        Starlisp.prin1(runtime.eval(runtime.read(in)), out)
       }
     } catch {
       case e: Exception => e.printStackTrace;
