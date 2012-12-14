@@ -1,17 +1,5 @@
 package org.starlisp.core
 
-/*
-** TODO: * Fix up exceptions in places to be nicer somehow. Especially
-**         for read-related stuffs
-**       * Think about lexical scoping... dynamic scoping might be more of a PITA than I thought initially (dynamic wins on
-**         ease of implementation... _but_). Lexical might not need be so difficult given passable environments, also nlambdas
-**         as a method for recursion would be sort of cute in this case (or do we use the y-combinator? =p)
-**       * Try later to move away from pure list structure for exprs, instead substituting with a subclass of Procedure
-**         possibly internally containing the same list structure, this is going to make lexical scoping among other things
-**         much smoother (as well as removing serious amounts of clutter from eval)
-**       * Fix up EOF-handling
-*/
-
 import java.io._
 import scala.Predef._
 import scala.Some
@@ -411,9 +399,7 @@ class Runtime {
   intern(new LispFn("make-runnable", 1) {
     def apply(o: Args) = {
       new JavaObject(new Runnable {
-        def run {
-          eval(cons(o(0), null), globalEnv)
-        }
+        def run { eval(cons(o(0), null), globalEnv) }
       })
     }
   })
