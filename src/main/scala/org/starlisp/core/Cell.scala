@@ -5,6 +5,12 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   def Car[T <: LispObject](): T = this.car.asInstanceOf[T]
   def Car(car: LispObject) : LispObject = { this.car = car; car }
 
+  def first = Car[LispObject]
+  def rest = Cdr[Cell]
+  def cadr = rest.first
+  def caddr = rest.rest.first
+  def cdddr = rest.rest.rest
+
   def Cdr[T <: LispObject](): T = this.cdr.asInstanceOf[T]
   def Cdr(cdr: LispObject) : LispObject = { this.cdr = cdr; cdr }
 
@@ -49,13 +55,13 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
     var done = false
     while (!done) {
       if (list.cdr == null) {
-        sb.append(Starlisp.toStringOrNil(list.car))
+        sb.append(LispObject.toStringOrNil(list.car))
         done = true
       } else if (!(list.cdr.isInstanceOf[Cell])) {
-        sb.append(Starlisp.toStringOrNil(list.car)).append(" . ").append(list.cdr.toString)
+        sb.append(LispObject.toStringOrNil(list.car)).append(" . ").append(list.cdr.toString)
         done = true
       } else {
-        sb.append(Starlisp.toStringOrNil(list.car)).append(" ")
+        sb.append(LispObject.toStringOrNil(list.car)).append(" ")
         list = list.cdr.asInstanceOf[Cell]
       }
     }
