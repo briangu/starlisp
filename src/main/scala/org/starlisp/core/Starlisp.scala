@@ -338,11 +338,11 @@ class Runtime {
   val standardInput = globalEnv.intern("*standard-input*", new LispInputStreamReader(globalEnv, System.in))
 
   def read(stream: LispInputStream): LispObject = {
-    (if (stream != nil) stream else standardInput.value).as[LispInputStream].read
+    Option(stream).getOrElse(standardInput.value).as[LispInputStream].read
   }
 
   def readChar(stream: LispInputStream): LispChar = {
-    (if (stream != nil) stream else standardInput.value).as[LispInputStream].readChar
+    Option(stream).getOrElse(standardInput.value).as[LispInputStream].readChar
   }
 
   intern(new LispFn("read", 0, 1) {
