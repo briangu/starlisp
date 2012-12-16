@@ -13,6 +13,8 @@
                   (roop (cddr lst))))))
     (roop clazzes)))
 
+(fetch-java-classes 'ArrayList           "java.util.ArrayList")
+
 (fetch-java-classes 'Array               "java.lang.reflect.Array"
                     'Arrays              "java.util.Arrays"
                     'ArrayList           "java.util.ArrayList"
@@ -71,8 +73,8 @@
                     'Symbol              "org.starlisp.core.Symbol"
                     'Cell                "org.starlisp.core.Cell"
                     'Procedure           "org.starlisp.core.Procedure"
-                    'LispSubr            "org.starlisp.core.LispSubr"
-                    'LispStream          "org.starlisp.core.LispStream"
+                    'LispFn              "org.starlisp.core.LispFn"
+                    'LispStreamImpl      "org.starlisp.core.LispStreamImpl"
                     'LispException       "org.starlisp.core.LispException")
 
 ;; GURBER

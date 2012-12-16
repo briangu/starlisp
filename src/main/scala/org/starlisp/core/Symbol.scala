@@ -5,7 +5,7 @@ import collection.mutable
 
 class Environment(outer: Option[Environment] = None) {
 
-  val index = new mutable.HashMap[String, Symbol]
+  lazy val index = new mutable.HashMap[String, Symbol]
 
   override def toString(): String = index map {case (k,v) => "%s => %s".format(k,v)} mkString("\n")
 

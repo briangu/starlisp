@@ -16,10 +16,19 @@ public final class JavaMethod extends Procedure {
   // FIXME: ARRGGGHH I SEEM TO PREFER OBJECT OVER DOUBLE SOMEOFTHEMTIMES... is this bad? Is it instead maybe what we want?
   //        fix is probably in either accept (more probable) or argumentMoreSpecificThan
 
-  private final Object obj;
-  private final Monstructor[] methods;
   // Maps argument classes to methods (this-object considered first argument in the list)
   private final static Map<String, Map<List<Class>, Monstructor>> methodMap = new HashMap<String, Map<List<Class>, Monstructor>>();
+  private final Object obj;
+  private final Monstructor[] methods;
+
+  public JavaMethod(Monstructor[] methods, String name, Object obj) {
+    super(name, 0, Integer.MAX_VALUE); // TODO: Send proper limits to super?
+    this.methods = methods;
+    this.obj = obj;
+    if (!methodMap.containsKey(name)) {
+      methodMap.put(name, new HashMap<List<Class>, Monstructor>());
+    }
+  }
 
   // NEWTHING: what about accpetiong when the lispArg is null? (anything can be null except int,float etc. (not Integer,Float etc.)
   // Checks if lispArg can be cast to the class javaArg represents
@@ -58,6 +67,26 @@ public final class JavaMethod extends Procedure {
                             b.isAssignableFrom(a);                       // If b is assignable from a, a is more specific, "narrower", than b
   }
 
+  // Conversion helpers, does the unboxing and boxing
+  private static Object[] lispToJava(LispObject[] objs, Class[] argt) {
+    Object[] res = new Object[objs.length];
+    for (int i = 0; i < objs.length; ++i)
+      res[i] = // (objs[i] instanceof JavaObject)                         ? ((JavaObject)objs[i]).getObj() :
+          (LispObject.class.isAssignableFrom(argt[i])) ? objs[i] : // Wants a LispObject or subclass, no unboxing needed
+              (objs[i] instanceof JavaObject) ? ((JavaObject) objs[i]).getObj() :
+                  (argt[i] == float.class || argt[i] == Float.class) ? ((LispFlonum) objs[i]).toJavaFloat() :
+                      (argt[i] == double.class || argt[i] == Double.class) ? ((LispFlonum) objs[i]).toJavaDouble() :
+                          (argt[i] == int.class || argt[i] == Integer.class) ? ((LispInteger) objs[i]).toJavaInt() :
+                              (argt[i] == short.class || argt[i] == Short.class) ? new Short((short) ((LispInteger) objs[i]).toJavaInt()) :
+                                  (argt[i] == BigInteger.class) ? ((LispInteger) objs[i]).toJavaBigInteger() :
+                                      (argt[i] == char.class || argt[i] == Character.class) ? ((LispChar) objs[i]).ch() :
+                                          (argt[i] == long.class || argt[i] == Long.class) ? ((LispInteger) objs[i]).toJavaLong() :
+                                              (argt[i] == Boolean.class || argt[i] == boolean.class) ? objs[i] != null :
+                                                  (argt[i] == String.class) ? ((LispString) objs[i]).toJavaString() :
+                                                      objs[i];
+    return res;
+  }
+
   // Matches a method given a list of LispObjects that this method will be called with. A three-stage rocket.
   // TODO: Split me into my three logical parts.
   private int matchMethod(LispObject[] lispArgs) {
@@ -67,11 +96,13 @@ public final class JavaMethod extends Procedure {
     // Prune all methods of insufficient length
     ListIterator<Integer> it = list.listIterator();
     while (it.hasNext())
-      if (methods[it.next()].getParameterTypes().length != lispArgs.length)
+      if (methods[it.next()].getParameterTypes().length != lispArgs.length) {
         it.remove();
+      }
     if (list.isEmpty()) return -1;                  // No match
-    if (list.size() == 1)
+    if (list.size() == 1) {
       return list.getFirst();   // We have a match here (there was but one method of this length)
+    }
 
     System.out.println("hej");
 
@@ -79,8 +110,9 @@ public final class JavaMethod extends Procedure {
     for (int argNumber = 0; argNumber < lispArgs.length; ++argNumber) {
       it = list.listIterator();
       while (it.hasNext())
-        if (!accept(methods[it.next()].getParameterTypes()[argNumber], lispArgs[argNumber]))
+        if (!accept(methods[it.next()].getParameterTypes()[argNumber], lispArgs[argNumber])) {
           it.remove();
+        }
       if (list.isEmpty()) return -1;                  // No match
       if (list.size() == 1) return list.getFirst();   // We have a potential match here
     }
@@ -105,8 +137,9 @@ public final class JavaMethod extends Procedure {
       while (it.hasNext()) {
         int asdf = it.next();
         System.out.println("asdf " + methods[asdf].getParameterTypes()[argNumber]);
-        if (methods[asdf].getParameterTypes()[argNumber] != methods[max].getParameterTypes()[argNumber])
+        if (methods[asdf].getParameterTypes()[argNumber] != methods[max].getParameterTypes()[argNumber]) {
           it.remove();
+        }
       }
 
       if (list.size() == 1) return list.getFirst();   // We have found our match
@@ -121,8 +154,9 @@ public final class JavaMethod extends Procedure {
     // cases where we have several alternatives here yet all of them return an abstract type?)
     it = list.listIterator();
     while (it.hasNext())
-      if (Modifier.isAbstract(methods[it.next()].getReturnType().getModifiers()))
+      if (Modifier.isAbstract(methods[it.next()].getReturnType().getModifiers())) {
         it.remove();
+      }
 
     for (Integer i : list)
       System.out.print(methods[i] + " \\\\//");
@@ -132,26 +166,6 @@ public final class JavaMethod extends Procedure {
 
 
     throw new LispException(Symbol.internalError(), "This should not happen!"); // Seriously, it shouldn't!
-  }
-
-  // Conversion helpers, does the unboxing and boxing
-  private static Object[] lispToJava(LispObject[] objs, Class[] argt) {
-    Object[] res = new Object[objs.length];
-    for (int i = 0; i < objs.length; ++i)
-      res[i] = // (objs[i] instanceof JavaObject)                         ? ((JavaObject)objs[i]).getObj() :
-          (LispObject.class.isAssignableFrom(argt[i])) ? objs[i] : // Wants a LispObject or subclass, no unboxing needed
-              (objs[i] instanceof JavaObject) ? ((JavaObject) objs[i]).getObj() :
-                  (argt[i] == float.class || argt[i] == Float.class) ? ((LispFlonum) objs[i]).toJavaFloat() :
-                      (argt[i] == double.class || argt[i] == Double.class) ? ((LispFlonum) objs[i]).toJavaDouble() :
-                          (argt[i] == int.class || argt[i] == Integer.class) ? ((LispInteger) objs[i]).toJavaInt() :
-                              (argt[i] == short.class || argt[i] == Short.class) ? new Short((short) ((LispInteger) objs[i]).toJavaInt()) :
-                                  (argt[i] == BigInteger.class) ? ((LispInteger) objs[i]).toJavaBigInteger() :
-                                      (argt[i] == char.class || argt[i] == Character.class) ? ((LispChar) objs[i]).ch() :
-                                          (argt[i] == long.class || argt[i] == Long.class) ? ((LispInteger) objs[i]).toJavaLong() :
-                                              (argt[i] == Boolean.class || argt[i] == boolean.class) ? objs[i] != null :
-                                                  (argt[i] == String.class) ? ((LispString) objs[i]).toJavaString() :
-                                                      objs[i];
-    return res;
   }
 
   private LispObject javaToLisp(Object obj) {
@@ -174,8 +188,8 @@ public final class JavaMethod extends Procedure {
     List<Class> res = new ArrayList<Class>(list.length + 1);
     for (int i = 0; i < list.length; ++i)
       res.add((list[i] == null) ? null : // Don't want NullPointerExceptions
-          (list[i] instanceof JavaObject) ? ((JavaObject) list[i]).getObj().getClass() : // For JavaObject it is more useful to use the class of the object it contains
-              list[i].getClass());
+                  (list[i] instanceof JavaObject) ? ((JavaObject) list[i]).getObj().getClass() : // For JavaObject it is more useful to use the class of the object it contains
+                      list[i].getClass());
     return res;
   }
 
@@ -188,8 +202,9 @@ public final class JavaMethod extends Procedure {
       Monstructor method = methodMap.get(name()).get(argumentTypes);
       if (method == null) {
         int m = matchMethod(objects);
-        if (m == -1)
+        if (m == -1) {
           throw new LispException(Symbol.internalError(), "No matching method found for the args: " + Arrays.toString(objects));
+        }
         method = methods[m];
         methodMap.get(name()).put(argumentTypes, method);
       }
@@ -201,14 +216,6 @@ public final class JavaMethod extends Procedure {
     } catch (InstantiationException e) {
       throw new LispException(Symbol.internalError(), e);
     }
-  }
-
-  public JavaMethod(Monstructor[] methods, String name, Object obj) {
-    super(name, 0, Integer.MAX_VALUE); // TODO: Send proper limits to super?
-    this.methods = methods;
-    this.obj = obj;
-    if (!methodMap.containsKey(name))
-      methodMap.put(name, new HashMap<List<Class>, Monstructor>());
   }
 
   public String toString() {

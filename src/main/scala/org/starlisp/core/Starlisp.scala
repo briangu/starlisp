@@ -38,7 +38,7 @@ object Starlisp {
   private def intern(proc: Procedure): Unit = intern(proc.name).value = proc
 
   intern("nil").value = nil
-  intern("Class").value = new JavaObject(classOf[Class[_]])
+  intern("Class").value = new JavaObject(classOf[java.lang.Class[_]])
 
   intern(new LispFn2("cons") { def apply(o: Args) = { new Cell(a(o), b(o)) } })
   intern(new LispFn1[Cell]("car") { def apply(o: Args) = { if (a(o) == nil) nil else a(o).car } })
@@ -387,19 +387,18 @@ class Runtime {
   intern(new LispFn1[LispObject]("eval") {def apply(o: Args) = eval(o(0), globalEnv)})
   intern(new Procedure("set") {
     def apply(env: Environment, o: Args) = {
-      val evaled = o(1)
       val sym = o(0).as[Symbol]
       env.find(sym) match {
         case Some(foundSymbol) => {
           // TODO: should we also set the value of sym ?
-          foundSymbol.value = evaled
+          foundSymbol.value = o(1)
         }
         case None => {
-          sym.value = evaled
+          sym.value = o(1)
           globalEnv.intern(sym) // TODO: hack! we are setting the globalEnv on miss so setq works
         }
       }
-      evaled
+      o(1)
     }
   })
   intern(new LispFn("symbols") {def apply(o: Args) = globalEnv.getSymbols})
