@@ -7,21 +7,7 @@ class Environment(outer: Option[Environment] = None) {
 
   var index: Option[mutable.HashMap[String, Symbol]] = None
 
-  //override def toString(): String = index map {case (k,v) => "%s => %s".format(k,v)} mkString("\n")
-
-  def printChain() {
-    println("--->")
-    println(toString())
-    outer match {
-      case Some(env) => env.printChain()
-      case None => ;
-    }
-  }
-
-  def chain() : Environment = {
-   // printChain()
-    new Environment(Some(this))
-  }
+  def chain() : Environment = new Environment(Some(this))
 
   def gensym = new Symbol("G%d".format(Environment.genSymCounter.getAndIncrement()))
 
