@@ -1,6 +1,7 @@
 ;-*- Mode: Lisp -*-
 
 (+ 1 1)
+(set 'a '(+ 1 1))
 
 ;; Bootstrapping: begin!
 ;; IMPLEMENTED USING ONLY PRIMITIVES
@@ -639,7 +640,8 @@
   (cond ((end? alist)           nil)
         ((eq? key (cdar alist)) (car alist))
         (t                      (rassq key (cdr alist)))))
-         
+
+;; currently busted
 (let ((definer (macro (a)
                  (subst-symbols '(defmacro <name> (a)
                                    (subst-symbols '(setq <place> (<fun> <place> <delta>))
@@ -750,7 +752,7 @@
           '<ass-sym> ass-sym
           '<table-sym> table-sym
           '<fn> fn))))
-  
+
 (defun collatz (n)
   (print n)
   (if (= n 1)
@@ -1169,10 +1171,13 @@
   (unless (member module *features*)
     (push module *features*)))
 
-(let ((a 1) (b 2)) (+ a b))
-(let ((a 1) (b 2)) (cons a b #(hej din fisk (1 2 3))))
+#;(let () 1)
+#;(let ((x 1)) x)
+#;(let ((a 1)) (+ a a))
+#;(let ((a 1) (b 2)) (+ a b))
+#;(let ((a 1) (b 2)) (cons a b #(hej din fisk (1 2 3))))
 
-(let ((a 1) (b 2)) (cons a '(#\W (1231312312312312312312312312312313123 . 5343412914294967296) (<a> <b> <c>) b #(hej din fisk (1 2 3)) "potatismossa" . 12.4)))
+#;(let ((a 1) (b 2)) (cons a '(#\W (1231312312312312312312312312312313123 . 5343412914294967296) (<a> <b> <c>) b #(hej din fisk (1 2 3)) "potatismossa" . 12.4)))
 
 (provide 'stuff)
 

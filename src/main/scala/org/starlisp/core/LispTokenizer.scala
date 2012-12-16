@@ -75,8 +75,10 @@ class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends Lisp
       dottedCdr.obj = read
       dottedCdr
     } else {
-      // TODO: make more efficient
-      if (LispNumber.isNumber(str)) LispNumber.tryParse(str) else env.intern(str)
+      if (LispNumber.isNumber(str))
+        LispNumber.tryParse(str)
+      else
+        env.find(str).getOrElse(new Symbol(str))//env.intern(str)
     }
   }
 
@@ -90,7 +92,10 @@ class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends Lisp
         tokenizer.nextToken()
       }
       val symStr = sb.toString
-      if (symStr.equals("nil")) null else env.intern(symStr);
+      if (symStr.equals("nil"))
+        null
+      else
+        env.find(symStr).getOrElse(new Symbol(symStr)) //env.intern(symStr)
     } finally {
       tokenizer.useSExprSyntaxMode()
     }

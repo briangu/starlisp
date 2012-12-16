@@ -25,36 +25,6 @@ class Environment(outer: Option[Environment] = None) {
 
   def gensym = new Symbol("G%d".format(Environment.genSymCounter.getAndIncrement()))
 
-  /*
-  private val DEFAULT_STACK_SIZE = 32768 * 2
-  private var stackSize = 0
-  private val stack = new Array[LispObject](DEFAULT_STACK_SIZE)
-
-  def save { stackSize += 1 }
-  def restore {
-    stackSize -= 1
-    while (stack(stackSize) != null) {
-      (stack(stackSize).asInstanceOf[Symbol]).value = stack(stackSize - 1)
-      stack(stackSize) = null
-      stack(stackSize - 1) = null
-      stackSize -= 2
-    }
-  }
-
-  def bind(sbl: Symbol, value: LispObject) {
-    val oldValue: LispObject = sbl.value
-    sbl.value = value
-    var i = stackSize - 1
-    while (stack(i) != null) {
-      if (stack(i) eq sbl) return
-      i -= 2
-    }
-    stack(stackSize) = oldValue
-    stackSize += 1;
-    stack(stackSize) = sbl
-    stackSize += 1;
-  }
-*/
   def bind(sbl: Symbol, value: LispObject) = index.getOrElseUpdate(sbl.name, sbl).value = value
 
   def getSymbols: Cell = {
@@ -65,24 +35,24 @@ class Environment(outer: Option[Environment] = None) {
     symbols
   }
 
-  def isInterned(sym: Symbol) = find(sym.name) != null
+  def isInterned(sym: Symbol) = find(sym.name) != None
 
-  def apply(symbol: Symbol): Symbol = find(symbol)
-  def find(symbol: Symbol): Symbol = find(symbol.name)
-  def find(str: String): Symbol = {
+  def find(symbol: Symbol): Option[Symbol] = find(symbol.name)
+  def find(str: String): Option[Symbol] = {
     index.get(str) match {
-      case Some(symbol) => symbol
+      case Some(symbol) => Some(symbol)
       case None => outer match {
         case Some(outer) => outer.find(str)
-        case None => null
+        case None => None
       }
     }
   }
 
-  def intern(symbol: Symbol): Symbol = Option(find(symbol)) match {
-    case Some(symbol) => symbol
-    case None => index.getOrElseUpdate(symbol.name, symbol)
+  def internChained(symbol: Symbol): Option[Symbol] = Option(find(symbol)) match {
+    case Some(x) => x
+    case None => Some(index.getOrElseUpdate(symbol.name, symbol))
   }
+  def intern(symbol: Symbol): Symbol = index.getOrElseUpdate(symbol.name, symbol)
   def intern(str: String): Symbol = intern(new Symbol(str))
   def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
 }
