@@ -1175,7 +1175,7 @@
 #;(let ((x 1)) x)
 #;(let ((a 1)) (+ a a))
 #;(let ((a 1) (b 2)) (+ a b))
-#;(let ((a 1) (b 2)) (cons a b #(hej din fisk (1 2 3))))
+#;(let ((a 1) (b 2)) (cons a (cons b #(hej din fisk (1 2 3)))))
 
 #;(let ((a 1) (b 2)) (cons a '(#\W (1231312312312312312312312312312313123 . 5343412914294967296) (<a> <b> <c>) b #(hej din fisk (1 2 3)) "potatismossa" . 12.4)))
 

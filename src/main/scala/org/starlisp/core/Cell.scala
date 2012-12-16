@@ -42,7 +42,7 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
     val arr = new Array[LispObject](length)
     var c = this
     (0 until arr.length).foreach { i =>
-      arr(i) = c
+      arr(i) = c.car
       c = c.cdr.asInstanceOf[Cell]
     }
     arr
