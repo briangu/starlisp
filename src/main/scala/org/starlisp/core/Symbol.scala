@@ -72,8 +72,8 @@ object Symbol {
 
   val internalError = intern("internal-error")
   val t: Symbol = intern("t")
-  val standardOutput = intern("*standard-output*", new LispOutputStreamImpl(System.out))
-  val standardError = intern("*standard-error*", new LispOutputStreamImpl(System.err))
+  val standardOutput = intern("*standard-output*", new LispOutputStreamWriter(System.out))
+  val standardError = intern("*standard-error*", new LispOutputStreamWriter(System.err))
   val lambda = intern("lambda")
   val quote = intern("quote")
   val _if = intern("if")

@@ -336,7 +336,7 @@ class Runtime {
   // Initialize the Runtime-specific methods
   private def intern(proc: Procedure) = globalEnv.intern(proc.name).value = proc
 
-  val standardInput = globalEnv.intern("*standard-input*", new LispTokenizer(globalEnv, System.in))
+  val standardInput = globalEnv.intern("*standard-input*", new LispInputStreamReader(globalEnv, System.in))
 
   def read(stream: LispInputStream): LispObject = {
     (if (stream != nil) stream else standardInput.value).as[LispInputStream].read
@@ -388,8 +388,8 @@ class Runtime {
   intern(new Procedure("open", 2) {
     def apply(env: Environment, o: Args) = {
       try {
-        if (o(1) eq Symbol.in) new LispTokenizer(env, new FileReader((o(0).as[LispString]).toJavaString))
-        else if (o(1) eq Symbol.out) new LispOutputStreamImpl(new PrintWriter(new FileWriter((o(0).as[LispString]).toJavaString)))
+        if (o(1) eq Symbol.in) new LispInputStreamReader(env, new FileReader((o(0).as[LispString]).toJavaString))
+        else if (o(1) eq Symbol.out) new LispOutputStreamWriter(new PrintWriter(new FileWriter((o(0).as[LispString]).toJavaString)))
         else throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
       } catch {
         case e: IOException => {
@@ -399,7 +399,7 @@ class Runtime {
     }
   })
   intern(new Procedure("make-string-input-stream") {
-    def apply(env: Environment, o: Args) = new LispTokenizer(env, new StringReader(o(0).as[LispString].toJavaString))
+    def apply(env: Environment, o: Args) = new LispInputStreamReader(env, new StringReader(o(0).as[LispString].toJavaString))
   })
   intern(new LispFn("symbols") {def apply(o: Args) = globalEnv.getSymbols})
   intern(new LispFn("gensym") {def apply(o: Args) = globalEnv.gensym})
