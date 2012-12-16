@@ -642,7 +642,7 @@
         (t                      (rassq key (cdr alist)))))
 
 ;; currently busted
-(let ((definer (macro (a)
+#;(let ((definer (macro (a)
                  (subst-symbols '(defmacro <name> (a)
                                    (subst-symbols '(setq <place> (<fun> <place> <delta>))
                                                   '<place> (second a)
