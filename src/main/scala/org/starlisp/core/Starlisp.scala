@@ -238,10 +238,9 @@ class Runtime {
     res
   }
 
-  // TODO: remove inobj and make recursive
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
-      case symbol: Symbol => env.find(symbol).map(_.value).getOrElse(new Symbol("unknown??: " + symbol.name))
+      case symbol: Symbol => env.find(symbol).map(_.value).getOrElse(new Symbol("unknown:" + symbol.name))
       case list: Cell => {
         if (list.car eq Symbol._if) {
           evalIf(list, env)
