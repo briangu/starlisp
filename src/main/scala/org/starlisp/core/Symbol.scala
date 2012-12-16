@@ -5,9 +5,9 @@ import collection.mutable
 
 class Environment(outer: Option[Environment] = None) {
 
-  lazy val index = new mutable.HashMap[String, Symbol]
+  var index: Option[mutable.HashMap[String, Symbol]] = None
 
-  override def toString(): String = index map {case (k,v) => "%s => %s".format(k,v)} mkString("\n")
+  //override def toString(): String = index map {case (k,v) => "%s => %s".format(k,v)} mkString("\n")
 
   def printChain() {
     println("--->")
@@ -25,34 +25,52 @@ class Environment(outer: Option[Environment] = None) {
 
   def gensym = new Symbol("G%d".format(Environment.genSymCounter.getAndIncrement()))
 
-  def bind(sbl: Symbol, value: LispObject) = index.getOrElseUpdate(sbl.name, sbl).value = value
+  def bind(sbl: Symbol, value: LispObject): Unit = index match {
+    case Some(idx) => idx.getOrElseUpdate(sbl.name, sbl).value = value
+    case None => {
+      index = Some(new mutable.HashMap[String, Symbol])
+      bind(sbl, value)
+    }
+  }
 
   def getSymbols: Cell = {
+    /*
     var symbols: Cell = null
     index.foreach{ case (name, sym) =>
       symbols = new Cell(sym, symbols)
     }
     symbols
+    */
+    null
   }
 
   def isInterned(sym: Symbol) = find(sym.name) != None
 
   def find(symbol: Symbol): Option[Symbol] = find(symbol.name)
-  def find(str: String): Option[Symbol] = {
-    index.get(str) match {
-      case Some(symbol) => Some(symbol)
-      case None => outer match {
-        case Some(outer) => outer.find(str)
-        case None => None
+  def find(str: String): Option[Symbol] = index match {
+    case Some(idx) =>  {
+      idx.get(str) match {
+        case Some(symbol) => Some(symbol)
+        case None => outer match {
+          case Some(outer) => outer.find(str)
+          case None => None
+        }
       }
+    }
+    case None => outer match {
+      case Some(outer) => outer.find(str)
+      case None => None
     }
   }
 
-  def internChained(symbol: Symbol): Option[Symbol] = Option(find(symbol)) match {
-    case Some(x) => x
-    case None => Some(index.getOrElseUpdate(symbol.name, symbol))
+  def intern(symbol: Symbol): Symbol = index match {
+    case Some(idx) => idx.getOrElseUpdate(symbol.name, symbol)
+    case None => {
+      index = Some(new mutable.HashMap[String, Symbol])
+      intern(symbol)
+    }
   }
-  def intern(symbol: Symbol): Symbol = index.getOrElseUpdate(symbol.name, symbol)
+
   def intern(str: String): Symbol = intern(new Symbol(str))
   def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
 }
