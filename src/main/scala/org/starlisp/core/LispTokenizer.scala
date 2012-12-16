@@ -2,7 +2,7 @@ package org.starlisp.core
 
 import java.io._
 
-class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends LispObject with LispInputStream {
+class LispTokenizer(env: Environment, in: Reader) extends LispObject with LispInputStream {
 
   case class ListEnd() extends LispObject
   class LispDottedCdr(var obj: LispObject = null) extends LispObject {}
@@ -12,15 +12,13 @@ class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends Lisp
   private val listEnd = new ListEnd
   private val dottedCdr = new LispDottedCdr
 
-  def this(env: Environment, is: InputStream, os: OutputStream) {
-    this(env,
-         if (is != null) new InputStreamReader(is, "UTF-8") else null,
-         if (os != null) new PrintWriter(os, true) else null)
+  def this(env: Environment, is: InputStream) {
+    this(env, if (is != null) new InputStreamReader(is, "UTF-8") else null)
   }
 
-  def eof() = tokenizer.ttype == StreamTokenizer.TT_EOF
-  def readChar() = throw new UnsupportedOperationException
-  def close(): Boolean = {
+  def eof = tokenizer.ttype == StreamTokenizer.TT_EOF
+  def readChar = LispChar.create(tokenizer.readChar())
+  def close: Boolean = {
     in.close()
     true
   }
@@ -36,24 +34,24 @@ class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends Lisp
   private def dispatch(): LispObject = {
     tokenizer.readChar() match {
       case ';' => {
-        read() // skip next s-exp
+        read // skip next s-exp
         null
       }
       case '\\' => LispChar.create(tokenizer.readChar())
       case '(' => new LispArray(readList().asInstanceOf[Cell])
-      case '\'' => read()
+      case '\'' => read
       case ch => throw new LispException("dispatch syntax error for: " + String.valueOf(ch))
     }
   }
 
   def readList(): LispObject = {
-    var obj = read()
+    var obj = read
     if (obj eq listEnd) {
       null
     } else {
       var cell = new Cell(obj)
       val list = cell
-      obj = read()
+      obj = read
       if (obj ne listEnd) {
         do {
           if (obj eq dottedCdr) {
@@ -62,7 +60,7 @@ class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends Lisp
             cell.cdr = new Cell(obj)
             cell = cell.cdr.asInstanceOf[Cell]
           }
-          obj = read()
+          obj = read
         } while (obj ne listEnd)
       }
       list
@@ -78,7 +76,7 @@ class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends Lisp
       if (LispNumber.isNumber(str))
         LispNumber.tryParse(str)
       else
-        env.find(str).getOrElse(new Symbol(str))//env.intern(str)
+        env.find(str).getOrElse(new Symbol(str))
     }
   }
 
@@ -95,18 +93,18 @@ class LispTokenizer(env: Environment, in: Reader, out: PrintWriter) extends Lisp
       if (symStr.equals("nil"))
         null
       else
-        env.find(symStr).getOrElse(new Symbol(symStr)) //env.intern(symStr)
+        env.find(symStr).getOrElse(new Symbol(symStr))
     } finally {
       tokenizer.useSExprSyntaxMode()
     }
   }
 
-  def read(): LispObject = {
+  def read: LispObject = {
      next match {
       case '(' => readList()
       case StreamTokenizer.TT_WORD => readWord()
       case ')' => listEnd
-      case '\'' => new Cell(Symbol.quote, new Cell(read(), null))
+      case '\'' => new Cell(Symbol.quote, new Cell(read, null))
       case '"' => new LispString(tokenizer.buf, tokenizer.bufLimit)
       case '#' => dispatch()
       case '|' => readQuotedSymbol()

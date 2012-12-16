@@ -93,19 +93,6 @@ object Starlisp {
       }
     }
   })
-  intern(new LispFn("open", 2) {
-    def apply(o: Args) = {
-      try {
-        if (o(1) eq Symbol.in) new LispStreamImpl(new FileReader((o(0).as[LispString]).toJavaString), nil)
-        else if (o(1) eq Symbol.out) new LispStreamImpl(nil, new PrintWriter(new FileWriter((o(0).as[LispString]).toJavaString)))
-        else throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, e)
-        }
-      }
-    }
-  })
   intern(new LispFn1[LispStream]("close") {
     def apply(o: Args) = {
       try {
@@ -116,9 +103,6 @@ object Starlisp {
         }
       }
     }
-  })
-  intern(new LispFn1[LispString]("make-string-input-stream") {
-    def apply(o: Args) = new LispStreamImpl(new StringReader(a(o).toJavaString), nil)
   })
   intern(new LispFn1[StringOutputStream]("get-output-stream-string") {
     def apply(o: Args) = new LispString(a(o).getOutputStreamString)
@@ -352,7 +336,7 @@ class Runtime {
   // Initialize the Runtime-specific methods
   private def intern(proc: Procedure) = globalEnv.intern(proc.name).value = proc
 
-  val standardInput = globalEnv.intern("*standard-input*", new LispTokenizer(globalEnv, System.in, null))
+  val standardInput = globalEnv.intern("*standard-input*", new LispTokenizer(globalEnv, System.in))
 
   def read(stream: LispInputStream): LispObject = {
     (if (stream != nil) stream else standardInput.value).as[LispInputStream].read
@@ -400,6 +384,22 @@ class Runtime {
       }
       o(1)
     }
+  })
+  intern(new Procedure("open", 2) {
+    def apply(env: Environment, o: Args) = {
+      try {
+        if (o(1) eq Symbol.in) new LispTokenizer(env, new FileReader((o(0).as[LispString]).toJavaString))
+        else if (o(1) eq Symbol.out) new LispOutputStreamImpl(new PrintWriter(new FileWriter((o(0).as[LispString]).toJavaString)))
+        else throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
+      } catch {
+        case e: IOException => {
+          throw new LispException(Symbol.internalError, e)
+        }
+      }
+    }
+  })
+  intern(new Procedure("make-string-input-stream") {
+    def apply(env: Environment, o: Args) = new LispTokenizer(env, new StringReader(o(0).as[LispString].toJavaString))
   })
   intern(new LispFn("symbols") {def apply(o: Args) = globalEnv.getSymbols})
   intern(new LispFn("gensym") {def apply(o: Args) = globalEnv.gensym})

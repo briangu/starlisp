@@ -1,11 +1,10 @@
 package org.starlisp.core
 
 import java.util.concurrent.atomic.AtomicLong
-import collection.mutable
 
 class Environment(outer: Option[Environment] = None) {
 
-  var index: Option[mutable.HashMap[String, Symbol]] = None
+  var index: Option[collection.mutable.HashMap[String, Symbol]] = None
 
   def chain() : Environment = new Environment(Some(this))
 
@@ -14,7 +13,7 @@ class Environment(outer: Option[Environment] = None) {
   def bind(sbl: Symbol, value: LispObject): Unit = index match {
     case Some(idx) => idx.getOrElseUpdate(sbl.name, sbl).value = value
     case None => {
-      index = Some(new mutable.HashMap[String, Symbol])
+      index = Some(new collection.mutable.HashMap[String, Symbol])
       bind(sbl, value)
     }
   }
@@ -52,7 +51,7 @@ class Environment(outer: Option[Environment] = None) {
   def intern(symbol: Symbol): Symbol = index match {
     case Some(idx) => idx.getOrElseUpdate(symbol.name, symbol)
     case None => {
-      index = Some(new mutable.HashMap[String, Symbol])
+      index = Some(new collection.mutable.HashMap[String, Symbol])
       intern(symbol)
     }
   }
@@ -73,8 +72,8 @@ object Symbol {
 
   val internalError = intern("internal-error")
   val t: Symbol = intern("t")
-  val standardOutput = intern("*standard-output*", new LispStreamImpl(null, System.out))
-  val standardError = intern("*standard-error*", new LispStreamImpl(null, System.err))
+  val standardOutput = intern("*standard-output*", new LispOutputStreamImpl(System.out))
+  val standardError = intern("*standard-error*", new LispOutputStreamImpl(System.err))
   val lambda = intern("lambda")
   val quote = intern("quote")
   val _if = intern("if")

@@ -1,7 +1,6 @@
 package org.starlisp
 
 import core._
-import java.io.StringBufferInputStream
 
 object MicroBenchmark {
   def warmup(runtime: Runtime) {
@@ -21,7 +20,7 @@ object MicroBenchmark {
     var sum: Long = 0
     (0 until 100000).foreach { idx =>
       val start = System.currentTimeMillis()
-      runtime.read(new LispStreamImpl(new StringBufferInputStream(fixed), null))
+      runtime.read(runtime.standardInput.value.asInstanceOf[LispInputStream])
       sum += System.currentTimeMillis() - start
     }
     println("\n\t time = %d %f".format(sum, (sum / 100000.0)))
