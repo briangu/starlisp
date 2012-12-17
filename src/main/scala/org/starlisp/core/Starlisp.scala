@@ -238,6 +238,7 @@ class Runtime {
     res
   }
 
+  // TODO: @tailrec with state transitions (obj, state) match {}
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
       case symbol: Symbol => env.find(symbol).map(_.value).getOrElse(new Symbol("unknown:" + symbol.name))
