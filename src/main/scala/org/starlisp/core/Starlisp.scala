@@ -3,6 +3,7 @@ package org.starlisp.core
 import java.io._
 import scala.Predef._
 import scala.Some
+import annotation.switch
 
 object Starlisp {
 
@@ -43,8 +44,8 @@ object Starlisp {
   intern(new LispFn2("cons") { def apply(o: Args) = { new Cell(a(o), b(o)) } })
   intern(new LispFn1[Cell]("car") { def apply(o: Args) = { if (a(o) == nil) nil else a(o).car } })
   intern(new LispFn1[Cell]("cdr") { def apply(o: Args) = { if (a(o) == nil) nil else a(o).cdr } })
-  intern(new LispFn2[Cell, LispObject]("rplaca", 2) { def apply(o: Args) = { a(o).Car(b(o)); a(o) } })
-  intern(new LispFn2[Cell, LispObject]("rplacd", 2) { def apply(o: Args) = { a(o).Cdr(b(o)); a(o) } })
+  intern(new LispFn2[Cell, LispObject]("rplaca") { def apply(o: Args) = { a(o).Car(b(o)); a(o) } })
+  intern(new LispFn2[Cell, LispObject]("rplacd") { def apply(o: Args) = { a(o).Cdr(b(o)); a(o) } })
   intern(new LispFn("prin1", 1, 2) {
     def apply(o: Args) = prin1(o(0), if ((o.length > 1)) o(1).as[LispOutputStream] else nil)
   })
@@ -150,7 +151,7 @@ object Starlisp {
   intern(new LispFn("running-compiled?") {
     def apply(o: Args) = nil
   })
-  intern(new LispFn1[LispChar]("char->integer", 1) {
+  intern(new LispFn1[LispChar]("char->integer") {
     def apply(o: Args) = new LispFixnum(a(o).ch.asInstanceOf[Int])
   })
   intern(new LispFn1[LispInteger]("integer->char") {
@@ -226,16 +227,21 @@ class Runtime {
     result
   }
 
-  private def evlisArray(list: Cell, env: Environment): Args = {
-    val res: Args = new Args(if (list == null) 0 else list.length)
-    var i = 0
-    var c = list
-    while (c != null) {
-      res(i) = eval(c.car, env)
-      i += 1
-      c = c.rest
+  private def evlisArray(list: Cell, env: Environment, length: Int): (Args,Int) = {
+    if (length == 0) {
+      (Array(), 0)
+    } else {
+      val expectedLength = if (length == Integer.MAX_VALUE) list.length else length
+      val res = new Args(expectedLength)
+      var i = 0
+      var c = list
+      while (c != null) {
+        res(i) = eval(c.car, env)
+        i += 1
+        c = c.rest
+      }
+      (res, i)
     }
-    res
   }
 
   // TODO: @tailrec with state transitions (obj, state) match {}
@@ -286,9 +292,9 @@ class Runtime {
   }
 
   private def evalProc(proc: Procedure, list: Cell, env: Environment): LispObject = {
-    val args = evlisArray(list.rest, env)
-    if (args.length < proc.minArgs) error("Too few args when calling procedure: " + proc.toString)
-    if (args.length > proc.maxArgs) error("Too many args when calling procedure: " + proc.toString)
+    val (args, foundCount) = evlisArray(list.rest, env, proc.maxArgs)
+    if (foundCount < proc.minArgs) error("Too few args when calling procedure: " + proc.toString)
+    if (foundCount > proc.maxArgs) error("Too many args when calling procedure: " + proc.toString)
     proc(env, args)
   }
 
