@@ -228,7 +228,7 @@ class Runtime {
   }
 
   private def evlisArray(list: Cell, env: Environment, length: Int): (Args,Int) = {
-    if (length == 0) {
+    if ((list eq null) || (length == 0)) {
       (Array(), 0)
     } else {
       val expectedLength = if (length == Integer.MAX_VALUE) list.length else length
@@ -294,7 +294,8 @@ class Runtime {
   private def evalProc(proc: Procedure, list: Cell, env: Environment): LispObject = {
     val (args, foundCount) = evlisArray(list.rest, env, proc.maxArgs)
     if (foundCount < proc.minArgs) error("Too few args when calling procedure: " + proc.toString)
-    if (foundCount > proc.maxArgs) error("Too many args when calling procedure: " + proc.toString)
+// cant' be > since evlistArray doesn't take more than maxArgs
+//    if (foundCount > proc.maxArgs) error("Too many args when calling procedure: " + proc.toString)
     proc(env, args)
   }
 
