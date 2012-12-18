@@ -307,7 +307,7 @@ class Runtime {
               if (first.car eq Symbol.lambda) {
                 evalLambda(list, first.rest, env.chain)
               } else if (first.car eq Symbol.`macro`) {
-                evalmacro(list, first.rest, env)
+                eval(eval(cons(cons(Symbol.lambda, list.rest), cons(cons(Symbol.quote, cons(list)))), env), env)
               } else {
                 error("List is not a function: " + list.toString)
               }
@@ -335,10 +335,6 @@ class Runtime {
         case None => null
       }
     }
-  }
-
-  private def evalmacro(list: Cell, second: Cell, env: Environment): LispObject = {
-    eval(eval(cons(cons(Symbol.lambda, second), cons(cons(Symbol.quote, cons(list)))), env), env)
   }
 
   private def evalLambda(list: Cell, second: Cell, env: Environment): LispObject = {
