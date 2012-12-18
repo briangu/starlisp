@@ -296,7 +296,13 @@ class Runtime {
       case symbol: Symbol => env.find(symbol).map(_.value).getOrElse(new Symbol("unknown:" + symbol.name))
       case list: Cell => {
         if (list.car eq Symbol._if) {
-          evalIf(list, env)
+          Option(eval(list.cadr, env)) match {
+            case Some(_) => eval(list.caddr, env)
+            case None => Option(list.cdddr) match {
+              case Some(cell) => eval(cell.car, env)
+              case None => null
+            }
+          }
         } else if (list.car eq Symbol.quote) {
           list.cadr
         } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
@@ -324,16 +330,6 @@ class Runtime {
         }
       }
       case _ => obj
-    }
-  }
-
-  private def evalIf(list: Cell, env: Environment): LispObject = {
-    Option(eval(list.cadr, env)) match {
-      case Some(_) => eval(list.caddr, env)
-      case None => Option(list.cdddr) match {
-        case Some(cell) => eval(cell.car, env)
-        case None => null
-      }
     }
   }
 
