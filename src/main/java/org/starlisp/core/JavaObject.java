@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class JavaObject extends Procedure {
+public final class JavaObject extends JavaProcedure {
   private final static Map<Class, Map<Symbol, Monstructor[]>> methodMap = new HashMap<Class, Map<Symbol, Monstructor[]>>();
   private final Class klas;
   private final Object obj;

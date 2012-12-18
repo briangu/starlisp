@@ -3,23 +3,12 @@ package org.starlisp.core
 import java.io._
 import scala.Predef._
 import scala.Some
-import annotation.switch
 
 object Starlisp {
 
   val nil = null
   val t = Symbol.t
   type Args = Array[LispObject]
-
-  def prin1(obj: LispObject, stream: LispOutputStream): LispObject = {
-    val s = if (stream != nil) stream else Symbol.standardOutput.value.as[LispOutputStream]
-    if (obj != nil) {s.write(obj.toString)} else {s.write("nil")}
-    obj
-  }
-  def writeChar(ch: LispChar, stream: LispOutputStream): LispChar = {
-    (if (stream != nil) stream else Symbol.standardOutput.value).as[LispOutputStream].write(ch.ch)
-    ch
-  }
 
   private def eq(obj1: LispObject, obj2: LispObject) = if (obj1 eq obj2) t else nil
   private def eql(a: LispObject, b: LispObject): LispObject = {
@@ -55,9 +44,6 @@ object Starlisp {
   })
   intern(new LispFn2[Cell, LispObject]("rplacd") {
     def apply(a: Cell, b: LispObject) = { a.Cdr(b); a }
-  })
-  intern(new LispFn("prin1", 1, 2) {
-    def apply(o: Args) = prin1(o(0), if ((o.length > 1)) o(1).as[LispOutputStream] else nil)
   })
   intern(new LispFn1[Symbol]("symbol-value") {
     def apply(a: Symbol) = { if (a eq nil) nil else a.value }
@@ -127,28 +113,6 @@ object Starlisp {
     def apply(o: Args) = {
       System.exit(if (o.length < 1) 0 else (o(0).as[LispNumber]).toJavaInt)
       nil
-    }
-  })
-  intern(new LispFn("write-char", 1, 2) {
-    def apply(o: Args) = {
-      try {
-        writeChar(o(0).as[LispChar], (if (o.length > 1) o(1).as[LispOutputStream] else nil))
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
-        }
-      }
-    }
-  })
-  intern(new LispFn1[LispStream]("close") {
-    def apply(a: LispStream) = {
-      try {
-        if (a.close) t else nil
-      } catch {
-        case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
-        }
-      }
     }
   })
   intern(new LispFn1[StringOutputStream]("get-output-stream-string") {
@@ -375,6 +339,41 @@ class Runtime {
     Option(stream).getOrElse(standardInput.value).as[LispInputStream].readChar
   }
 
+  def prin1(obj: LispObject, stream: LispOutputStream): LispObject = {
+    val s = if (stream != nil) stream else Symbol.standardOutput.value.as[LispOutputStream]
+    if (obj != nil) {s.write(obj.toString)} else {s.write("nil")}
+    obj
+  }
+  def writeChar(ch: LispChar, stream: LispOutputStream): LispChar = {
+    (if (stream != nil) stream else Symbol.standardOutput.value).as[LispOutputStream].write(ch.ch)
+    ch
+  }
+
+  intern(new LispFn("prin1", 1, 2) {
+    def apply(o: Args) = prin1(o(0), if ((o.length > 1)) o(1).as[LispOutputStream] else nil)
+  })
+  intern(new LispFn("write-char", 1, 2) {
+    def apply(o: Args) = {
+      try {
+        writeChar(o(0).as[LispChar], (if (o.length > 1) o(1).as[LispOutputStream] else nil))
+      } catch {
+        case e: IOException => {
+          throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
+        }
+      }
+    }
+  })
+  intern(new LispFn1[LispStream]("close") {
+    def apply(a: LispStream) = {
+      try {
+        if (a.close) t else nil
+      } catch {
+        case e: IOException => {
+          throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
+        }
+      }
+    }
+  })
   intern(new LispFn("read", 0, 1) {
     def apply(o: Args) = {
       try {
