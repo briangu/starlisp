@@ -273,23 +273,6 @@ class Runtime {
     result
   }
 
-  private def evlisArray(list: Cell, env: Environment, length: Int): (Args,Int) = {
-    if ((list eq null) || (length == 0)) {
-      (Array(), 0)
-    } else {
-      val expectedLength = if (length == Integer.MAX_VALUE) list.length else length
-      val res = new Args(expectedLength)
-      var i = 0
-      var c = list
-      while (c != null) {
-        res(i) = eval(c.car, env)
-        i += 1
-        c = c.rest
-      }
-      (res, i)
-    }
-  }
-
   // TODO: @tailrec with state transitions (obj, state) match {}
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
