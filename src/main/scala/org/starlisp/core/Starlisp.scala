@@ -23,7 +23,7 @@ object Starlisp {
 
   private def eq(obj1: LispObject, obj2: LispObject) = if (obj1 eq obj2) t else nil
   private def eql(a: LispObject, b: LispObject): LispObject = {
-    if (a == nil || b == nil)
+    if ((a eq nil) || (b eq nil))
       eq(a, b)
     else if (!a.getClass.isInstance(b))
       nil
@@ -41,42 +41,88 @@ object Starlisp {
   intern("nil").value = nil
   intern("Class").value = new JavaObject(classOf[java.lang.Class[_]])
 
-  intern(new LispFn2("cons") { def apply(o: Args) = { new Cell(a(o), b(o)) } })
-  intern(new LispFn1[Cell]("car") { def apply(o: Args) = { if (a(o) == nil) nil else a(o).car } })
-  intern(new LispFn1[Cell]("cdr") { def apply(o: Args) = { if (a(o) == nil) nil else a(o).cdr } })
-  intern(new LispFn2[Cell, LispObject]("rplaca") { def apply(o: Args) = { a(o).Car(b(o)); a(o) } })
-  intern(new LispFn2[Cell, LispObject]("rplacd") { def apply(o: Args) = { a(o).Cdr(b(o)); a(o) } })
+  intern(new LispFnP[LispObject]("cons") {
+    def apply(a: LispObject, b:LispObject) = { new Cell(a, b) }
+  })
+  intern(new LispFn1[Cell]("car") {
+    def apply(a: Cell) = { if (a eq nil) nil else a.car }
+  })
+  intern(new LispFn1[Cell]("cdr") {
+    def apply(a: Cell) = { if (a eq nil) nil else a.cdr }
+  })
+  intern(new LispFn2[Cell, LispObject]("rplaca") {
+    def apply(a: Cell, b: LispObject) = { a.Car(b); a }
+  })
+  intern(new LispFn2[Cell, LispObject]("rplacd") {
+    def apply(a: Cell, b: LispObject) = { a.Cdr(b); a }
+  })
   intern(new LispFn("prin1", 1, 2) {
     def apply(o: Args) = prin1(o(0), if ((o.length > 1)) o(1).as[LispOutputStream] else nil)
   })
   intern(new LispFn1[Symbol]("symbol-value") {
-    def apply(o: Args) = { if (a(o) == nil) nil else a(o).value }
+    def apply(a: Symbol) = { if (a eq nil) nil else a.value }
   })
   intern(new LispFn1[LispObject]("intern") {
-    def apply(o: Args) = {
-      if (a(o).isInstanceOf[LispString]) intern((a(o).as[LispString]).toJavaString)
-      else if (a(o).isInstanceOf[Symbol]) Symbol.intern(a(o).as[Symbol])
+    def apply(a: LispObject) = {
+      if (a.isInstanceOf[LispString]) intern((a.as[LispString]).toJavaString)
+      else if (a.isInstanceOf[Symbol]) Symbol.intern(a.as[Symbol])
       else throw new LispException(Symbol.internalError, "Bad argument")
     }
   })
-  intern(new LispFnP[LispObject]("eq?") { def apply(o: Args) = { if (a(o) eq b(o)) t else nil } })
-  intern(new LispFn1[LispObject]("atom?") { def apply(o: Args) = if (a(o).isInstanceOf[Cell]) nil else t })
-  intern(new LispFnP[LispNumber]("+") { def apply(o: Args) = { a(o).add(b(o)) } })
-  intern(new LispFnP[LispNumber]("-") { def apply(o: Args) = { a(o).sub(b(o)) } })
-  intern(new LispFnP[LispNumber]("*") { def apply(o: Args) = { a(o).mul(b(o)) } })
-  intern(new LispFnP[LispNumber]("/") { def apply(o: Args) = { a(o).div(b(o)) } })
-  intern(new LispFnP[LispInteger]("mod") { def apply(o: Args) = { a(o).mod(b(o)) } })
-  intern(new LispFnP[LispInteger]("ash") { def apply(o: Args) = { a(o).ash(b(o)) } })
-  intern(new LispFn1[LispNumber]("neg?") { def apply(o: Args) = { if (a(o).negP) t else nil } })
-  intern(new LispFn1[LispNumber]("sqrt") { def apply(o: Args) = { new LispFlonum((math.sqrt(a(o).toJavaDouble))) } })
-  intern(new LispFnP[LispObject]("eql?") { def apply(o: Args) = eql(a(o), b(o)) })
-  intern(new LispFnP[LispNumber]("=") { def apply(o: Args) = if (a(o) == b(o)) t else nil })
-  intern(new LispFnP[LispChar]("char=") { def apply(o: Args) = if (a(o).ch == b(o).ch) t else nil })
-  intern(new LispFn2[LispArray, LispInteger]("aref") { def apply(o: Args) = a(o).aref(b(o).toJavaInt) })
-  intern(new LispFn("aset", 3) { def apply(o: Args) = { (o(0).as[LispArray]).aset((o(1).as[LispInteger]).toJavaInt, o(2)) } })
-  intern(new LispFn("get-time") { def apply(o: Args) = new LispFixnum(System.currentTimeMillis) })
-  intern(new LispFn("make-string-output-stream") { def apply(o: Args) = new StringOutputStream })
-  intern(new LispFn1[LispStream]("eof?") { def apply(o: Args) = if (a(o).eof) t else nil })
+  intern(new LispFnP[LispObject]("eq?") {
+    def apply(a: LispObject, b:LispObject) = { if (a eq b) t else nil }
+  })
+  intern(new LispFn1[LispObject]("atom?") {
+    def apply(a: LispObject) = if (a.isInstanceOf[Cell]) nil else t
+  })
+  intern(new LispFnP[LispNumber]("+") {
+    def apply(a: LispNumber, b: LispNumber) = { a.add(b) }
+  })
+  intern(new LispFnP[LispNumber]("-") {
+    def apply(a: LispNumber, b: LispNumber) = { a.sub(b) }
+  })
+  intern(new LispFnP[LispNumber]("*") {
+    def apply(a: LispNumber, b: LispNumber) = { a.mul(b) }
+  })
+  intern(new LispFnP[LispNumber]("/") {
+    def apply(a: LispNumber, b: LispNumber) = { a.div(b) }
+  })
+  intern(new LispFnP[LispInteger]("mod") {
+    def apply(a: LispInteger, b: LispInteger) = { a.mod(b) }
+  })
+  intern(new LispFnP[LispInteger]("ash") {
+    def apply(a: LispInteger, b: LispInteger) = { a.ash(b) }
+  })
+  intern(new LispFn1[LispNumber]("neg?") {
+    def apply(a: LispNumber) = { if (a.negP) t else nil }
+  })
+  intern(new LispFn1[LispNumber]("sqrt") {
+    def apply(a: LispNumber) = { new LispFlonum((math.sqrt(a.toJavaDouble))) }
+  })
+  intern(new LispFnP[LispObject]("eql?") {
+    def apply(a: LispObject, b: LispObject) = eql(a, b)
+  })
+  intern(new LispFnP[LispNumber]("=") {
+    def apply(a: LispNumber, b: LispNumber) = if (a == b) t else nil
+  })
+  intern(new LispFnP[LispChar]("char=") {
+    def apply(a: LispChar, b: LispChar) = if (a.ch == b.ch) t else nil
+  })
+  intern(new LispFn2[LispArray, LispInteger]("aref") {
+    def apply(a: LispArray, b: LispInteger) = a.aref(b.toJavaInt)
+  })
+  intern(new LispFn3[LispArray, LispInteger, LispObject]("aset") {
+    def apply(a: LispArray, b: LispInteger, c: LispObject) = { a.aset(b.toJavaInt, c) }
+  })
+  intern(new LispFn0("get-time") {
+    def apply() = new LispFixnum(System.currentTimeMillis)
+  })
+  intern(new LispFn0("make-string-output-stream") {
+    def apply() = new StringOutputStream
+  })
+  intern(new LispFn1[LispStream]("eof?") {
+    def apply(a: LispStream) = if (a.eof) t else nil
+  })
   intern(new LispFn("exit", 0, 1) {
     def apply(o: Args) = {
       System.exit(if (o.length < 1) 0 else (o(0).as[LispNumber]).toJavaInt)
@@ -95,9 +141,9 @@ object Starlisp {
     }
   })
   intern(new LispFn1[LispStream]("close") {
-    def apply(o: Args) = {
+    def apply(a: LispStream) = {
       try {
-        if (a(o).close) t else nil
+        if (a.close) t else nil
       } catch {
         case e: IOException => {
           throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
@@ -106,7 +152,7 @@ object Starlisp {
     }
   })
   intern(new LispFn1[StringOutputStream]("get-output-stream-string") {
-    def apply(o: Args) = new LispString(a(o).getOutputStreamString)
+    def apply(a: StringOutputStream) = new LispString(a.getOutputStreamString)
   })
   intern(new LispFn("throw", 1, 2) {
     def apply(o: Args) = {
@@ -134,7 +180,7 @@ object Starlisp {
   intern(new LispFn("length", 1) {
     def apply(o: Args) = {
       new LispFixnum(
-        if ((o(0) == nil))
+        if ((o(0) eq nil))
           0
         else if (o(0).isInstanceOf[Cell])
           (o(0).as[Cell]).length
@@ -143,39 +189,39 @@ object Starlisp {
     }
   })
   intern(new LispFnP[LispObject]("equal?") {
-    def apply(o: Args) = { if (if (a(o) == nil) (b(o) == nil) else (a(o) == b(o))) t else nil }
+    def apply(a: LispObject, b: LispObject) = { if (if (a eq nil) (b eq nil) else (a == b)) t else nil }
   })
   intern(new LispFn1[LispObject]("sxhash") {
-    def apply(o: Args) = new LispFixnum(if (o == nil) 0 else o.hashCode)
+    def apply(a: LispObject) = new LispFixnum(if (a eq nil) 0 else a.hashCode)
   })
   intern(new LispFn("running-compiled?") {
     def apply(o: Args) = nil
   })
   intern(new LispFn1[LispChar]("char->integer") {
-    def apply(o: Args) = new LispFixnum(a(o).ch.asInstanceOf[Int])
+    def apply(a: LispChar) = new LispFixnum(a.ch.asInstanceOf[Int])
   })
   intern(new LispFn1[LispInteger]("integer->char") {
-    def apply(o: Args) = LispChar.create(a(o).toJavaInt.asInstanceOf[Char])
+    def apply(a: LispInteger) = LispChar.create(a.toJavaInt.asInstanceOf[Char])
   })
   intern(new LispFn2[Symbol, LispObject]("type?") {
-    def apply(o: Args) = {
+    def apply(a: Symbol, b: LispObject) = {
       val knownType =
-        if (a(o) eq number) b(o).isInstanceOf[LispNumber]
-        else if (a(o) eq integer) b(o).isInstanceOf[LispInteger]
-        else if (a(o) eq fixnum) b(o).isInstanceOf[LispFixnum]
-        else if (a(o) eq bignum) b(o).isInstanceOf[LispBigInt]
-        else if (a(o) eq flonum) b(o).isInstanceOf[LispFlonum]
-        else if (a(o) eq symbol) b(o).isInstanceOf[Symbol]
-        else if (a(o) eq cons) b(o).isInstanceOf[Cell]
-        else if (a(o) eq list) (b(o) == nil || b(o).isInstanceOf[Cell])
-        else if (a(o) eq procedure) b(o).isInstanceOf[Procedure]
-        else if (a(o) eq subr) b(o).isInstanceOf[LispFn]
-        else if (a(o) eq array) b(o).isInstanceOf[LispArray]
-        else if (a(o) eq string) b(o).isInstanceOf[LispString]
-        else if (a(o) eq javaObject) b(o).isInstanceOf[JavaObject]
-        else if (a(o) eq javaMethod) b(o).isInstanceOf[JavaMethod]
-        else if (a(o) eq charmander) b(o).isInstanceOf[LispChar]
-        else if (a(o) eq stream) b(o).isInstanceOf[LispStream]
+        if (a eq number) b.isInstanceOf[LispNumber]
+        else if (a eq integer) b.isInstanceOf[LispInteger]
+        else if (a eq fixnum) b.isInstanceOf[LispFixnum]
+        else if (a eq bignum) b.isInstanceOf[LispBigInt]
+        else if (a eq flonum) b.isInstanceOf[LispFlonum]
+        else if (a eq symbol) b.isInstanceOf[Symbol]
+        else if (a eq cons) b.isInstanceOf[Cell]
+        else if (a eq list) ((b eq nil) || b.isInstanceOf[Cell])
+        else if (a eq procedure) b.isInstanceOf[Procedure]
+        else if (a eq subr) b.isInstanceOf[LispFn]
+        else if (a eq array) b.isInstanceOf[LispArray]
+        else if (a eq string) b.isInstanceOf[LispString]
+        else if (a eq javaObject) b.isInstanceOf[JavaObject]
+        else if (a eq javaMethod) b.isInstanceOf[JavaMethod]
+        else if (a eq charmander) b.isInstanceOf[LispChar]
+        else if (a eq stream) b.isInstanceOf[LispStream]
         else false
       if (knownType) t else nil
     }
@@ -266,7 +312,7 @@ class Runtime {
                 error("List is not a function: " + list.toString)
               }
             }
-            case proc: Procedure => evalProc(proc, list, env)
+            case proc: Procedure => proc(env, list.rest, eval)
             case unknown => {
               throw new LispException(
                 Symbol.internalError,
@@ -289,14 +335,6 @@ class Runtime {
         case None => null
       }
     }
-  }
-
-  private def evalProc(proc: Procedure, list: Cell, env: Environment): LispObject = {
-    val (args, foundCount) = evlisArray(list.rest, env, proc.maxArgs)
-    if (foundCount < proc.minArgs) error("Too few args when calling procedure: " + proc.toString)
-// cant' be > since evlistArray doesn't take more than maxArgs
-//    if (foundCount > proc.maxArgs) error("Too many args when calling procedure: " + proc.toString)
-    proc(env, args)
   }
 
   private def evalmacro(list: Cell, second: Cell, env: Environment): LispObject = {
@@ -375,28 +413,39 @@ class Runtime {
       }
     }
   })
-  intern(new LispFn1[LispObject]("eval") {def apply(o: Args) = eval(o(0), globalEnv)})
+  intern(new LispFn1[LispObject]("eval") {
+    def apply(a: LispObject) = eval(a, globalEnv)
+  })
   intern(new Procedure("set") {
-    def apply(env: Environment, o: Args) = {
-      val sym = o(0).as[Symbol]
+    def apply(env: Environment, list: Cell, eval: (LispObject, Environment) => LispObject) = {
+      if (list eq null) error("Too few args when calling procedure: " + toString)
+      val sym = eval(list.car, env).as[Symbol]
+      if (list.rest eq null) error("Too few args when calling procedure: " + toString)
+      val b = eval(list.rest.car, env)
+
       env.find(sym) match {
         case Some(foundSymbol) => {
           // TODO: should we also set the value of sym ?
-          foundSymbol.value = o(1)
+          foundSymbol.value = b
         }
         case None => {
-          sym.value = o(1)
+          sym.value = b
           globalEnv.intern(sym) // TODO: hack! we are setting the globalEnv on miss so setq works
         }
       }
-      o(1)
+      b
     }
   })
   intern(new Procedure("open", 2) {
-    def apply(env: Environment, o: Args) = {
+    def apply(env: Environment, list: Cell, eval: (LispObject, Environment) => LispObject) = {
       try {
-        if (o(1) eq Symbol.in) new LispInputStreamReader(env, new FileReader((o(0).as[LispString]).toJavaString))
-        else if (o(1) eq Symbol.out) new LispOutputStreamWriter(new PrintWriter(new FileWriter((o(0).as[LispString]).toJavaString)))
+        if (list eq null) error("Too few args when calling procedure: " + toString)
+        val a = eval(list.car, env).as[LispString].toJavaString
+        if (list.rest eq null) error("Too few args when calling procedure: " + toString)
+        val b = eval(list.rest.car, env)
+
+        if (b eq Symbol.in) new LispInputStreamReader(env, new FileReader(a))
+        else if (b eq Symbol.out) new LispOutputStreamWriter(new PrintWriter(new FileWriter(a)))
         else throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
       } catch {
         case e: IOException => {
@@ -406,7 +455,11 @@ class Runtime {
     }
   })
   intern(new Procedure("make-string-input-stream") {
-    def apply(env: Environment, o: Args) = new LispInputStreamReader(env, new StringReader(o(0).as[LispString].toJavaString))
+    def apply(env: Environment, list: Cell, eval: (LispObject, Environment) => LispObject) = {
+      if (list eq null) error("Too few args when calling procedure: " + toString)
+      val a = eval(list.car, env).as[LispString].toJavaString
+      new LispInputStreamReader(env, new StringReader(a))
+    }
   })
   intern(new LispFn("symbols") {def apply(o: Args) = globalEnv.getSymbols})
   intern(new LispFn("gensym") {def apply(o: Args) = globalEnv.gensym})
@@ -418,13 +471,13 @@ class Runtime {
     }
   })
   intern(new LispFnP[LispObject]("%try") {
-    def apply(o: Args) = {
+    def apply(a: LispObject, b: LispObject) = {
       try {
-        eval(cons(a(o), null), globalEnv)
+        eval(cons(a, null), globalEnv)
       }
       catch {
         case e: Exception => {
-          eval(cons(b(o), cons(new JavaObject(e), null)), globalEnv)
+          eval(cons(b, cons(new JavaObject(e), null)), globalEnv)
         }
       }
     }

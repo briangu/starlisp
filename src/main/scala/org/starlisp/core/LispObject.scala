@@ -14,7 +14,9 @@ class LispObject {
 abstract class Procedure(val name : String = "", val minArgs: Int = 0, val maxArgs: Int = Integer.MAX_VALUE) extends LispObject {
   def this(name: String, numArgs: Int) = this(name, numArgs, numArgs)
 
-  def apply(env: Environment, objects: Array[LispObject]): LispObject
+  protected def error(msg: String): LispObject = throw new LispException(Symbol.internalError, msg)
+
+  def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject
 
   override def toString: String = "#<subr %s >".format(name)
 }
@@ -22,26 +24,77 @@ abstract class Procedure(val name : String = "", val minArgs: Int = 0, val maxAr
 abstract class LispFn(name : String = "", minArgs: Int = 0, maxArgs: Int = Integer.MAX_VALUE)
   extends Procedure(name, minArgs, maxArgs)
 {
+  protected def evlisArray(list: Cell, env: Environment, length: Int, eval: ((LispObject, Environment) => LispObject)): (Array[LispObject],Int) = {
+    if ((list eq null) || (length == 0)) {
+      (Array(), 0)
+    } else {
+      val expectedLength = if (length == Integer.MAX_VALUE) list.length else length
+      val res = new Array[LispObject](expectedLength)
+      var i = 0
+      var c = list
+      while (c != null) {
+        res(i) = eval(c.car, env)
+        i += 1
+        c = c.rest
+      }
+      (res, i)
+    }
+  }
+
+  def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+    val (args, foundCount) = evlisArray(list.rest, env, maxArgs, eval)
+    if (foundCount < minArgs) error("Too few args when calling procedure: " + toString)
+    apply(env, args)
+  }
+
   def apply(objects: Array[LispObject]): LispObject
   def apply(env: Environment, objects: Array[LispObject]): LispObject = apply(objects)
 }
 
-abstract class LispFn1[A <: LispObject](name : String = "") extends LispFn(name, 1, 1) {
-  def a(o: Array[LispObject]): A = o(0).asInstanceOf[A]
+abstract class LispFn0[A <: LispObject](name : String = "") extends Procedure(name, 1, 1) {
+  def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+    apply()
+  }
+
+  def apply(): LispObject
 }
 
-abstract class LispFn2[A <: LispObject,B <: LispObject](name : String = "") extends LispFn(name, 2, 2) {
-  def a(o: Array[LispObject]): A = o(0).asInstanceOf[A]
-  def b(o: Array[LispObject]): B = o(1).asInstanceOf[B]
+abstract class LispFn1[A <: LispObject](name : String = "") extends Procedure(name, 1, 1) {
+  def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+    if (list eq null) error("Too few args when calling procedure: " + toString)
+    apply(eval(list.car, env).as[A])
+  }
+
+  def apply(a: A): LispObject
+}
+
+abstract class LispFn2[A <: LispObject,B <: LispObject](name : String = "") extends Procedure(name, 2, 2) {
+  def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+    if (list eq null) error("Too few args when calling procedure: " + toString)
+    val a = list.car
+    if (list.rest eq null) error("Too few args when calling procedure: " + toString)
+    val b = list.rest.first
+    apply(eval(a, env).as[A], eval(b, env).as[B])
+  }
+
+  def apply(a: A, b: B): LispObject
 }
 
 // LispFnPair - same as LispFn2, but using the same types for A and B
 abstract class LispFnP[A <: LispObject](name : String = "") extends LispFn2[A,A](name)
 
-abstract class LispFn3[A <: LispObject,B <: LispObject,C <: LispObject](name : String = "") extends LispFn(name, 3, 3) {
-  def a(o: Array[LispObject]): A = o(0).asInstanceOf[A]
-  def b(o: Array[LispObject]): B = o(1).asInstanceOf[B]
-  def c(o: Array[LispObject]): C = o(2).asInstanceOf[C]
+abstract class LispFn3[A <: LispObject,B <: LispObject,C <: LispObject](name : String = "") extends Procedure(name, 3, 3) {
+  def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+    if (list eq null) error("Too few args when calling procedure: " + toString)
+    val a = list.car
+    if (list.rest eq null) error("Too few args when calling procedure: " + toString)
+    val b = list.rest.first
+    if (list.rest.rest eq null) error("Too few args when calling procedure: " + toString)
+    val c = list.rest.rest.car
+    apply(eval(a, env).as[A], eval(b, env).as[B], eval(c, env).as[C])
+  }
+
+  def apply(a: A, b: B, c: C): LispObject
 }
 
 class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispObject {

@@ -6,11 +6,11 @@ object MicroBenchmark {
   def warmup(runtime: Runtime) {
     Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("\n>>");
     val list = runtime.read(runtime.standardInput.value.asInstanceOf[LispInputStream])
-    val start = System.currentTimeMillis()
-    (0 until 100000).foreach{ idx =>
+    val start = System.nanoTime()
+    (0 until 100000000).foreach{ idx =>
       runtime.eval(list)
     }
-    val now = System.currentTimeMillis()
+    val now = System.nanoTime()
     println("\n\t time = %d".format(now - start))
   }
 
@@ -18,7 +18,7 @@ object MicroBenchmark {
 
   def warmupParser(runtime: Runtime) {
     var sum: Long = 0
-    (0 until 100000).foreach { idx =>
+    (0 until 1000000).foreach { idx =>
       val start = System.currentTimeMillis()
       runtime.read(runtime.standardInput.value.asInstanceOf[LispInputStream])
       sum += System.currentTimeMillis() - start
@@ -41,6 +41,8 @@ object MicroBenchmark {
   }
 
   def main(args: Array[String]) {
+    Runtime.init()
+
     var runtime = new Runtime
 
     warmup(runtime)
