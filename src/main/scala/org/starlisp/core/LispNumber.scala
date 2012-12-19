@@ -88,7 +88,7 @@ class LispBigDecimal(val n: BigDecimal) extends LispNumber {
   def toJavaLong = n.longValue()
   def toJavaFloat = n.floatValue()
   def toJavaDouble = n.doubleValue()
-  def toJavaBigInteger = n.bigDecimal.toBigInteger()
+  def toJavaBigInteger = n.bigDecimal.toBigInteger
   def toBigDecimal = n
   def toBigInt = new BigInt(n.bigDecimal.toBigInteger)
 

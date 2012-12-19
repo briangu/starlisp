@@ -243,14 +243,18 @@ class Runtime {
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
       case symbol: Symbol => {
-        val sym = env.find(symbol)
-        if (sym eq None) {
-          new Symbol("unknown:" + symbol.name)
-          // TODO: log
-          // TODO: return nil?
-        } else {
-          sym.get.value
+        if (symbol.value eq null) {
+          val sym = env.find(symbol)
+          if (sym eq None) {
+//            new Symbol("unknown:" + symbol.name)
+            // TODO: log
+            // TODO: return nil?
+          } else {
+            // TODO: investigate if this breaks enviroment closures!!
+            symbol.value = sym.get.value
+          }
         }
+        symbol.value
       }
       case list: Cell => {
         if (list.car eq Symbol._if) {
