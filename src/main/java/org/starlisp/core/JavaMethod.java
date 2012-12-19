@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-public final class JavaMethod extends Procedure {
+public final class JavaMethod extends LispFn {
 
   // FIXME: ARRGGGHH I SEEM TO PREFER OBJECT OVER DOUBLE SOMEOFTHEMTIMES... is this bad? Is it instead maybe what we want?
   //        fix is probably in either accept (more probable) or argumentMoreSpecificThan
@@ -194,7 +194,7 @@ public final class JavaMethod extends Procedure {
   }
 
   // Apply method to objects and the closed-over this object
-  public LispObject apply(Environment env, LispObject[] objects) {
+  public LispObject apply(LispObject[] objects) {
     try {
       List<Class> argumentTypes = getArgumentTypes(objects);
       Class storeKlas = (obj instanceof Class) ? (Class) obj : obj.getClass(); // We need to use obj as key when it is an instance of Class

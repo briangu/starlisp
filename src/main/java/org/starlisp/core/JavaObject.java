@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class JavaObject extends JavaProcedure {
+public final class JavaObject extends LispFn {
   private final static Map<Class, Map<Symbol, Monstructor[]>> methodMap = new HashMap<Class, Map<Symbol, Monstructor[]>>();
   private final Class klas;
   private final Object obj;
@@ -15,7 +15,7 @@ public final class JavaObject extends JavaProcedure {
 
   /* Wrap that object! */
   public JavaObject(Object obj) {
-    super(obj.toString(), 1);
+    super(obj.toString(), 1, 1);
     this.obj = obj;
     // klas = (obj != null) ? obj.getClass() : null;
     klas = obj.getClass();
@@ -25,7 +25,7 @@ public final class JavaObject extends JavaProcedure {
   }
 
   /* Apply object to symbol generating a "closure", a.k.a. method. */
-  public JavaMethod apply(Environment env, LispObject[] o) {
+  public JavaMethod apply(LispObject[] o) {
     Symbol sbl = (Symbol) o[0];
     ArrayList<Monstructor> methodList = new ArrayList<Monstructor>();
     Monstructor[] methodArray;

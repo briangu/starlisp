@@ -4,7 +4,7 @@ import java.io._
 import scala.Predef._
 import scala.Some
 
-object Starlisp {
+object Runtime {
 
   val nil = null
   val t = Symbol.t
@@ -212,7 +212,9 @@ object Starlisp {
 
 class Runtime {
 
-  import Starlisp._
+  import Runtime._
+
+  def init() = t
 
   var stopped = false
 
