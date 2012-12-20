@@ -275,7 +275,7 @@ class Runtime {
               if (first.car eq Symbol.lambda) {
                 evalLambda(list, first.rest, env.chain)
               } else if (first.car eq Symbol.`macro`) {
-                eval(eval(cons(cons(Symbol.lambda, list.rest), cons(cons(Symbol.quote, cons(list)))), env), env)
+                eval(eval(cons(cons(Symbol.lambda, first.rest), cons(cons(Symbol.quote, cons(list)))), env), env)
               } else {
                 error("List is not a function: " + list.toString)
               }
