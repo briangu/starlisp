@@ -214,11 +214,14 @@ class Runtime {
 
   import Runtime._
 
-  def init() = t
+  def init() = {
+    globalEnv = Environment.root.chain
+    t
+  }
 
   var stopped = false
 
-  private val globalEnv = Environment.root.chain
+  private var globalEnv = Environment.root.chain
 
   private def error(msg: String): LispObject = {
     throw new LispException(Symbol.internalError, msg)
