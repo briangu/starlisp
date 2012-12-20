@@ -9,6 +9,8 @@
      (macro (a)
        (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote lambda) (cdr (cdr a))) nil)))))
 
+(defun foo (x) (+ x x))
+
 ;; IMPLEMENTED USING ONLY PRIMITIVES
 (set (quote defmacro)
      (macro (a)
