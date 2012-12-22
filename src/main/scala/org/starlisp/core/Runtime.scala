@@ -100,33 +100,35 @@ class Runtime {
     eval(eval(cons(cons(Symbol.lambda, second), cons(cons(Symbol.quote, cons(list)))), env), env)
   }
 
+  private def pairlis(cell: Cell, argsList: Cell, env: Environment) {
+    var vars = cell
+    var args = argsList
+    var done = false
+    while (!done) {
+      if (vars.cdr == null) {
+        if (args.cdr != null) error("Too many args: " + argsList)
+        env.bind(vars.Car[Symbol], args.car)
+        done = true
+      } else if (!(vars.cdr.isInstanceOf[Cell])) {
+        env.bind(vars.Car[Symbol], args.car)
+        env.bind(vars.Cdr[Symbol], args.cdr)
+        done = true
+      } else {
+        env.bind(vars.Car[Symbol], args.car)
+        args = args.rest
+        if (argsList == null) error("Too few args: " + argsList)
+        vars = vars.rest
+      }
+    }
+  }
+
   private def evalLambda(args: Cell, second: Cell, env: Environment): LispObject = {
     var lambdaBody = second.rest
     if (lambdaBody == null) return null // TODO: fix?
     val lambdaVar = second.car
     (Option(lambdaVar), Option(evlis(args, env))) match {
       case (Some(symbol: Symbol), Some(argsList: Cell)) => env.bind(symbol, argsList)
-      case (Some(head: Cell), Some(argsList: Cell)) => {
-        var cell = head
-        var argCell = argsList
-        var done = false
-        while (!done) {
-          if (cell.cdr == null) {
-            if (argCell.cdr != null) error("Too many args: " + args)
-            env.bind(cell.Car[Symbol], argCell.car)
-            done = true
-          } else if (!(cell.cdr.isInstanceOf[Cell])) {
-            env.bind(cell.Car[Symbol], argCell.car)
-            env.bind(cell.Cdr[Symbol], argCell.cdr)
-            done = true
-          } else {
-            env.bind(cell.Car[Symbol], argCell.car)
-            argCell = argCell.rest
-            if (argCell == null) error("Too few args: " + args)
-            cell = cell.rest
-          }
-        }
-      }
+      case (Some(head: Cell), Some(argsList: Cell)) => pairlis(head, argsList, env)
       case (Some(cell: Cell), None) => error("Too few args (zero in fact): " + args)
       case (_, _) => ;
     }
