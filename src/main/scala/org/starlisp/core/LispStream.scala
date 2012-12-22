@@ -158,7 +158,7 @@ class LispInputStreamReader(env: Environment, in: Reader) extends LispObject wit
       if (symStr.equals("nil"))
         null
       else
-        env.find(symStr).getOrElse(new Symbol(symStr))
+        env.find(symStr).getOrElse(new Symbol(symStr, new LispString(symStr)))
     } finally {
       tokenizer.useSExprSyntaxMode()
     }

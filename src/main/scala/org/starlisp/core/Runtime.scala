@@ -51,7 +51,11 @@ class Runtime {
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
       case symbol: Symbol => {
-        env.find(symbol).map(_.value).getOrElse(new Symbol("unknown:" + symbol.name))
+        if (symbol.value eq null) {
+          env.find(symbol).map(_.value).getOrElse(null)
+        } else {
+          symbol.value
+        }
       }
       case list: Cell => {
         if (list.car eq Symbol._if) {
