@@ -2,57 +2,88 @@ package org.starlisp.core
 
 import java.util.concurrent.atomic.AtomicLong
 
-class Environment(outer: Option[Environment] = None) {
+trait EnvironmentH {
+  def getSymbols: Cell
 
-  trait RouterEnvironment {
-    def find(symbol: Symbol): Option[Symbol] = find(symbol.name)
-    def find(str: String): Option[Symbol]
-  }
+  def chain() : Environment
 
-  class EmptyEnvironment() extends RouterEnvironment {
-    def find(str: String) = None
-  }
+  def bind(sbl: Symbol, value: LispObject): Unit
 
-  class EmptyEnvironment2(outer: Option[Environment]) extends RouterEnvironment {
-    val env = outer.get
-    def find(str: String) = env.find(str)
-  }
+  def find(symbol: Symbol): Option[Symbol]
+  def find(str: String): Option[Symbol]
 
-  class ActiveEnvironment extends RouterEnvironment {
-    var index = new collection.mutable.HashMap[String, Symbol]
-    def find(str: String) = index.get(str)
-  }
+  def isInterned(sym: Symbol) = find(sym.name) != None
 
-  class ActiveEnvironment2(outer: Option[Environment]) extends ActiveEnvironment {
-    val env = outer.get
-    override def find(str: String) = {
-      val x = index.get(str)
-      if (x eq None) {
-        env.find(str)
-      } else {
-        x
-      }
-    }
-  }
+  def intern(symbol: Symbol): Symbol
+  def intern(str: String): Symbol = intern(new Symbol(str))
+  def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
+}
 
-  private def getWritableRouter: ActiveEnvironment = {
-    router match {
-      case x: EmptyEnvironment => {createActiveRouter; router.asInstanceOf[ActiveEnvironment]}
-      case x: EmptyEnvironment2 => {createActiveRouter; router.asInstanceOf[ActiveEnvironment]}
-      case _ => router.asInstanceOf[ActiveEnvironment]
-    }
-  }
-  private def createActiveRouter {
-    router = if (outer eq None) new ActiveEnvironment() else new ActiveEnvironment2(outer)
-  }
-
-  var router = if (outer eq None) new EmptyEnvironment else new EmptyEnvironment2(outer)
+object RootEnvironment extends EnvironmentH {
+  var index = new collection.mutable.HashMap[String, Symbol]
 
   def chain() : Environment = new Environment(Some(this))
 
-  def gensym = new Symbol("G%d".format(Environment.genSymCounter.getAndIncrement()))
+  def gensym = Symbol.gensym
 
-  def bind(sbl: Symbol, value: LispObject): Unit = {
+  def bind(sbl: Symbol, value: LispObject) {
+    index.getOrElseUpdate(sbl.name, sbl).value = value
+  }
+
+  def getSymbols: Cell = {
+    /*
+    var symbols: Cell = null
+    index.foreach{ case (name, sym) =>
+      symbols = new Cell(sym, symbols)
+    }
+    symbols
+    */
+    null
+  }
+
+  def find(symbol: Symbol): Option[Symbol] = find(symbol.name)
+  def find(str: String) = index.get(str)
+
+  def intern(symbol: Symbol): Symbol = index.getOrElseUpdate(symbol.name, symbol)
+}
+
+trait RouterEnvironment {
+  def find(symbol: Symbol): Option[Symbol] = find(symbol.name)
+  def find(str: String): Option[Symbol]
+}
+
+class EmptyEnvironment(outer: Option[EnvironmentH]) extends RouterEnvironment {
+  val env = outer.get
+  def find(str: String) = env.find(str)
+}
+
+class ActiveEnvironment(outer: Option[EnvironmentH]) extends RouterEnvironment {
+  var index = new collection.mutable.HashMap[String, Symbol]
+  val env = outer.get
+  override def find(str: String) = {
+    val x = index.get(str)
+    if (x eq None) {
+      env.find(str)
+    } else {
+      x
+    }
+  }
+}
+
+class Environment(outer: Option[EnvironmentH] = None) extends EnvironmentH {
+
+  var router: RouterEnvironment = new EmptyEnvironment(outer)
+
+  private def getWritableRouter: ActiveEnvironment = {
+    router match {
+      case r: EmptyEnvironment => { val e = new ActiveEnvironment(outer); router = e; e }
+      case r: ActiveEnvironment => r
+    }
+  }
+
+  def chain() : Environment = new Environment(Some(this))
+
+  def bind(sbl: Symbol, value: LispObject) {
     getWritableRouter.index.getOrElseUpdate(sbl.name, sbl).value = value
   }
 
@@ -67,25 +98,19 @@ class Environment(outer: Option[Environment] = None) {
     null
   }
 
-  def isInterned(sym: Symbol) = find(sym.name) != None
-
   def find(symbol: Symbol): Option[Symbol] = router.find(symbol.name)
   def find(str: String): Option[Symbol] = router.find(str)
+
   def intern(symbol: Symbol): Symbol = getWritableRouter.index.getOrElseUpdate(symbol.name, symbol)
-
-  def intern(str: String): Symbol = intern(new Symbol(str))
-  def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
-}
-
-object Environment {
-  private val genSymCounter = new AtomicLong()
-
-  val root = new Environment
 }
 
 object Symbol {
 
-  private val env = Environment.root
+  private val env = RootEnvironment
+
+  private val genSymCounter = new AtomicLong()
+
+  def gensym = new Symbol("G%d".format(genSymCounter.getAndIncrement()))
 
   val internalError = intern("internal-error")
   val t: Symbol = intern("t")

@@ -12,7 +12,7 @@ class Runtime {
 
   var stopped = false
 
-  private val globalEnv = Environment.root.chain
+  private val globalEnv = RootEnvironment.chain
 
   private def error(msg: String): LispObject = {
     throw new LispException(Symbol.internalError, msg)
@@ -52,20 +52,29 @@ class Runtime {
     obj match {
       case symbol: Symbol => {
         if (symbol.value eq null) {
-          env.find(symbol).map(_.value).getOrElse(null)
+          val sym = env.find(symbol)
+          if (sym eq None) {
+            null
+          } else {
+            sym.get.value
+          }
         } else {
           symbol.value
         }
       }
       case list: Cell => {
-        if (list.car eq Symbol._if) {
+        val first = list.car
+        /*if (first eq Symbol._if) {
           evalIf(list, env)
-        } else if (list.car eq Symbol.quote) {
+        } else if (first eq Symbol.quote) {
           list.cadr
-        } else if ((list.car eq Symbol.lambda) || (list.car eq Symbol.`macro`)) {
+        } else
+        */
+        if ((first eq Symbol.lambda) || (first eq Symbol.`macro`)) {
           list
-        } else {
-          eval(list.car, env) match {
+        } else
+        {
+          eval(first, env) match {
             case first: Cell => {
               if (first.car eq Symbol.lambda) {
                 evalLambda(list.rest, first.rest, env.chain)
@@ -99,6 +108,29 @@ class Runtime {
       }
     }
   }
+  intern(new Procedure(Symbol._if.name) {
+    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      Option(eval(list.car, env)) match {
+        case Some(_) => eval(list.cadr, env)
+        case None => Option(list.cddr) match {
+          case Some(cell) => eval(cell.car, env)
+          case None => null
+        }
+      }
+    }
+  })
+
+  intern(new Procedure(Symbol._if.name) {
+    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      Option(eval(list.car, env)) match {
+        case Some(_) => eval(list.cadr, env)
+        case None => Option(list.cddr) match {
+          case Some(cell) => eval(cell.car, env)
+          case None => null
+        }
+      }
+    }
+  })
 
   private def evalmacro(list: Cell, second: Cell, env: Environment): LispObject = {
     eval(eval(cons(cons(Symbol.lambda, second), cons(cons(Symbol.quote, cons(list)))), env), env)
@@ -267,7 +299,7 @@ class Runtime {
     }
   })
   intern(new LispFn("symbols") {def apply(o: Args) = globalEnv.getSymbols})
-  intern(new LispFn("gensym") {def apply(o: Args) = globalEnv.gensym})
+  intern(new LispFn("gensym") {def apply(o: Args) = Symbol.gensym})
   intern(new LispFn("make-runnable", 1) {
     def apply(o: Args) = {
       new JavaObject(new Runnable {
@@ -297,24 +329,12 @@ class Runtime {
   intern("nil").value = nil
   intern("Class").value = new JavaObject(classOf[java.lang.Class[_]])
 
-/*
   intern(new Procedure(Symbol.quote.name) {
     def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
       list.car
     }
   })
-  intern(new Procedure(Symbol._if.name) {
-    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
-      Option(eval(list.cadr, env)) match {
-        case Some(_) => eval(list.caddr, env)
-        case None => Option(list.cdddr) match {
-          case Some(cell) => eval(cell.car, env)
-          case None => null
-        }
-      }
-    }
-  })
-*/
+
   intern(new LispFnP[LispObject]("cons") {
     def apply(a: LispObject, b:LispObject) = { new Cell(a, b) }
   })

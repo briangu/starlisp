@@ -108,6 +108,7 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   def first = Car[LispObject]
   def rest = Cdr[Cell]
   def cadr = rest.first
+  def cddr = rest.rest
   def caddr = rest.rest.first
   def cdddr = rest.rest.rest
 
