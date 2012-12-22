@@ -64,7 +64,7 @@ class Runtime {
           eval(list.car, env) match {
             case first: Cell => {
               if (first.car eq Symbol.lambda) {
-                evalLambda(list, first.rest, env.chain)
+                evalLambda(list.rest, first.rest, env.chain)
               } else if (first.car eq Symbol.`macro`) {
                 evalmacro(list, first.rest, env)
               } else {
@@ -100,11 +100,11 @@ class Runtime {
     eval(eval(cons(cons(Symbol.lambda, second), cons(cons(Symbol.quote, cons(list)))), env), env)
   }
 
-  private def evalLambda(list: Cell, second: Cell, env: Environment): LispObject = {
+  private def evalLambda(args: Cell, second: Cell, env: Environment): LispObject = {
     var lambdaBody = second.rest
     if (lambdaBody == null) return null // TODO: fix?
     val lambdaVar = second.car
-    (Option(lambdaVar), Option(evlis(list.rest, env))) match {
+    (Option(lambdaVar), Option(evlis(args, env))) match {
       case (Some(symbol: Symbol), Some(argsList: Cell)) => env.bind(symbol, argsList)
       case (Some(head: Cell), Some(argsList: Cell)) => {
         var cell = head
@@ -112,7 +112,7 @@ class Runtime {
         var done = false
         while (!done) {
           if (cell.cdr == null) {
-            if (argCell.cdr != null) error("Too many args: " + list)
+            if (argCell.cdr != null) error("Too many args: " + args)
             env.bind(cell.Car[Symbol], argCell.car)
             done = true
           } else if (!(cell.cdr.isInstanceOf[Cell])) {
@@ -122,12 +122,12 @@ class Runtime {
           } else {
             env.bind(cell.Car[Symbol], argCell.car)
             argCell = argCell.rest
-            if (argCell == null) error("Too few args: " + list)
+            if (argCell == null) error("Too few args: " + args)
             cell = cell.rest
           }
         }
       }
-      case (Some(cell: Cell), None) => error("Too few args (zero in fact): " + list)
+      case (Some(cell: Cell), None) => error("Too few args (zero in fact): " + args)
       case (_, _) => ;
     }
     while (lambdaBody.cdr != null) {
