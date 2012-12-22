@@ -63,25 +63,31 @@ class Runtime {
         }
       }
       case list: Cell => {
-        val first = list.car
+        //val first = list.car
         /*if (first eq Symbol._if) {
           evalIf(list, env)
         } else if (first eq Symbol.quote) {
           list.cadr
         } else
         */
-        if ((first eq Symbol.lambda) || (first eq Symbol.`macro`)) {
+//        if ((first eq Symbol.lambda) || (first eq Symbol.`macro`)) {
+/*
+        if (first eq Symbol.`macro`) {
           list
-        } else
-        {
-          eval(first, env) match {
+        } else {
+*/
+          eval(list.car, env) match {
             case first: Cell => {
-              if (first.car eq Symbol.lambda) {
-                evalLambda(list.rest, first.rest, env.chain)
-              } else if (first.car eq Symbol.`macro`) {
-                evalmacro(list, first.rest, env)
-              } else {
-                error("List is not a function: " + list.toString)
+              first.car match {
+                case fn: Symbol => {
+                  if (fn.name == Symbol.lambda.name) {
+                    evalLambda(list.rest, first.rest, env.chain)
+                  } else if (fn.name == Symbol.`macro`.name) {
+                    evalmacro(list, first.rest, env)
+                  } else {
+                    error("List is not a function: " + list.car.toString)
+                  }
+                }
               }
             }
             case proc: Procedure => proc(env, list, eval)
@@ -93,11 +99,23 @@ class Runtime {
                   LispObject.toStringOrNil(obj)))
             }
           }
-        }
+ //       }
       }
       case _ => obj
     }
   }
+
+  intern(new Procedure(Symbol.lambda.name) {
+    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      head
+    }
+  })
+
+  intern(new Procedure(Symbol.`macro`.name) {
+    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      head
+    }
+  })
 
   private def evalIf(list: Cell, env: Environment): LispObject = {
     Option(eval(list.cadr, env)) match {
