@@ -47,7 +47,6 @@ class Runtime {
     result
   }
 
-  // TODO: @tailrec with state transitions (obj, state) match {}
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
       case symbol: Symbol => {
@@ -63,43 +62,28 @@ class Runtime {
         }
       }
       case list: Cell => {
-        //val first = list.car
-        /*if (first eq Symbol._if) {
-          evalIf(list, env)
-        } else if (first eq Symbol.quote) {
-          list.cadr
-        } else
-        */
-//        if ((first eq Symbol.lambda) || (first eq Symbol.`macro`)) {
-/*
-        if (first eq Symbol.`macro`) {
-          list
-        } else {
-*/
-          eval(list.car, env) match {
-            case first: Cell => {
-              first.car match {
-                case fn: Symbol => {
-                  if (fn.name == Symbol.lambda.name) {
-                    evalLambda(list.rest, first.rest, env.chain)
-                  } else if (fn.name == Symbol.`macro`.name) {
-                    evalmacro(list, first.rest, env)
-                  } else {
-                    error("List is not a function: " + list.car.toString)
-                  }
+        eval(list.car, env) match {
+          case first: Cell => {
+            first.car match {
+              case fn: Symbol => {
+                if (fn.name == Symbol.lambda.name) {
+                  evalLambda(list.rest, first.rest, env.chain)
+                } else if (fn.name == Symbol.`macro`.name) {
+                  evalmacro(list, first.rest, env)
+                } else {
+                  error("List is not a function: " + list.car.toString)
                 }
               }
-            }
-            case proc: Procedure => proc(env, list, eval)
-            case unknown => {
-              throw new LispException(
-                Symbol.internalError,
-                "EVAL: %s is not a function name; try using a symbol instead. EXPR: %s".format(
-                  String.valueOf(list.car),
-                  LispObject.toStringOrNil(obj)))
+              case _ => error("unknown first: %s".format(list.car))
             }
           }
- //       }
+          case proc: Procedure => proc(env, list, eval)
+          case unknown => {
+            error("EVAL: %s is not a function name; try using a symbol instead. EXPR: %s".format(
+                  String.valueOf(list.car),
+                  LispObject.toStringOrNil(obj)))
+          }
+        }
       }
       case _ => obj
     }
