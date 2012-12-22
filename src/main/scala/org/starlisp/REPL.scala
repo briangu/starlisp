@@ -4,8 +4,6 @@ import core._
 
 object REPL extends App {
   val runtime = new Runtime
-  runtime.init()
-  println(Runtime.t)
   while(!runtime.stopped) {
     try {
       val out = Symbol.standardOutput.value.asInstanceOf[LispOutputStream]

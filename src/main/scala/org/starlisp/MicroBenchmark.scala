@@ -42,7 +42,6 @@ object MicroBenchmark {
 
   def main(args: Array[String]) {
     var runtime = new Runtime
-    runtime.init()
 
     warmup(runtime)
     warmup(runtime)
