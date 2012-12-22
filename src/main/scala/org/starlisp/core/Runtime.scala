@@ -84,7 +84,7 @@ class Runtime {
                 error("List is not a function: " + list.toString)
               }
             }
-            case proc: Procedure => proc(env, list.rest, eval)
+            case proc: Procedure => proc(env, list, eval)
             case unknown => {
               throw new LispException(
                 Symbol.internalError,
@@ -109,19 +109,8 @@ class Runtime {
     }
   }
   intern(new Procedure(Symbol._if.name) {
-    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
-      Option(eval(list.car, env)) match {
-        case Some(_) => eval(list.cadr, env)
-        case None => Option(list.cddr) match {
-          case Some(cell) => eval(cell.car, env)
-          case None => null
-        }
-      }
-    }
-  })
-
-  intern(new Procedure(Symbol._if.name) {
-    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      val list = head.rest
       Option(eval(list.car, env)) match {
         case Some(_) => eval(list.cadr, env)
         case None => Option(list.cddr) match {
@@ -254,7 +243,8 @@ class Runtime {
     def apply(a: LispObject) = eval(a, globalEnv)
   })
   intern(new Procedure("set") {
-    def apply(env: Environment, list: Cell, eval: (LispObject, Environment) => LispObject) = {
+    def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
+      val list = head.rest
       if (list eq null) error("Too few args when calling procedure: " + toString)
       val sym = eval(list.car, env).as[Symbol]
       if (list.rest eq null) error("Too few args when calling procedure: " + toString)
@@ -274,7 +264,8 @@ class Runtime {
     }
   })
   intern(new Procedure("open", 2) {
-    def apply(env: Environment, list: Cell, eval: (LispObject, Environment) => LispObject) = {
+    def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
+      val list = head.rest
       try {
         if (list eq null) error("Too few args when calling procedure: " + toString)
         val a = eval(list.car, env).as[LispString].toJavaString
@@ -292,7 +283,8 @@ class Runtime {
     }
   })
   intern(new Procedure("make-string-input-stream") {
-    def apply(env: Environment, list: Cell, eval: (LispObject, Environment) => LispObject) = {
+    def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
+      val list = head.rest
       if (list eq null) error("Too few args when calling procedure: " + toString)
       val a = eval(list.car, env).as[LispString].toJavaString
       new LispInputStreamReader(env, new StringReader(a))
@@ -331,7 +323,7 @@ class Runtime {
 
   intern(new Procedure(Symbol.quote.name) {
     def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
-      list.car
+      list.cadr
     }
   })
 
