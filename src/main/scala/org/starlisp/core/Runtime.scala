@@ -50,17 +50,16 @@ class Runtime {
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
       case symbol: Symbol => {
+        env.find(symbol).map(_.value).getOrElse(symbol)
+      }
+      /*{
         if (symbol.value eq null) {
           val sym = env.find(symbol)
-          if (sym eq None) {
-            null
-          } else {
-            sym.get.value
-          }
+          if (sym eq None) null else sym.get.value
         } else {
           symbol.value
         }
-      }
+      }*/
       case list: Cell => {
         eval(list.car, env) match {
           case first: Cell => {
@@ -101,15 +100,6 @@ class Runtime {
     }
   })
 
-  private def evalIf(list: Cell, env: Environment): LispObject = {
-    Option(eval(list.cadr, env)) match {
-      case Some(_) => eval(list.caddr, env)
-      case None => Option(list.cdddr) match {
-        case Some(cell) => eval(cell.car, env)
-        case None => null
-      }
-    }
-  }
   intern(new Procedure(Symbol._if.name) {
     def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
       val list = head.rest
@@ -297,7 +287,7 @@ class Runtime {
   intern(new LispFn("make-runnable", 1) {
     def apply(o: Args) = {
       new JavaObject(new Runnable {
-        def run { eval(cons(o(0), null), globalEnv) }
+        def run() { eval(cons(o(0), null), globalEnv) }
       })
     }
   })
@@ -322,6 +312,23 @@ class Runtime {
 
   intern("nil").value = nil
   intern("Class").value = new JavaObject(classOf[java.lang.Class[_]])
+
+  intern(new Procedure("aeq"){
+    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      val evalA = eval(list.cadr, env)
+      val evalB = eval(list.caddr, env)
+      val areEqual = if (evalA.getClass == evalB.getClass) {
+        (evalA, evalB) match {
+          case (a: Cell, b: Cell) => a.toString.equals(b.toString)
+          case (a, b) => a == b
+        }
+      } else {
+        false
+      }
+      if (!areEqual) error("%s not equal %s".format(evalA,evalB))
+      t
+    }
+  })
 
   intern(new Procedure(Symbol.quote.name) {
     def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {

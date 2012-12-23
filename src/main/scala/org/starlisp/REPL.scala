@@ -9,7 +9,7 @@ object REPL extends App {
       val out = Symbol.standardOutput.value.asInstanceOf[LispOutputStream]
       val in = runtime.standardInput.value.asInstanceOf[LispInputStream]
       while(!runtime.stopped) {
-        out.write("\n>> ");
+        out.write("\n>> ")
         runtime.prin1(runtime.eval(runtime.read(in)), out)
       }
     } catch {

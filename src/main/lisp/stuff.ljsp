@@ -1,7 +1,10 @@
 ;-*- Mode: Lisp -*-
 
 (+ 1 1)
+(aeq 2 (+ 1 1))
+
 (set 'a '(+ 1 1))
+(aeq a '(+ 1 1))
 
 ;; Bootstrapping: begin!
 ;; IMPLEMENTED USING ONLY PRIMITIVES
@@ -10,11 +13,13 @@
        (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote lambda) (cdr (cdr a))) nil)))))
 
 (defun foo (x) (+ x x))
+(aeq 2 (foo 1))
 
 ;; IMPLEMENTED USING ONLY PRIMITIVES
 (set (quote defmacro)
      (macro (a)
-       (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote macro) (cdr (cdr a))) nil)))))
+       (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil))
+                               (cons (cons (quote macro) (cdr (cdr a))) nil)))))
 
 (defun %load-loop (stream)
   (if (eof? stream)
@@ -29,7 +34,10 @@
    (open file 'in)))
 
 (defun 1- (n) (- n 1))
+(aeq 1 (1- 2))
+
 (defun 1+ (n) (+ n 1))
+(aeq 3 (1+ 2))
 
 (defun terpri rst
   (write-char #\
@@ -507,7 +515,7 @@
 (defmacro time (a)
   (list '%time (list* 'lambda '() (cdr a))))
 
-(defun. call-times (count fn)
+#;(defun. call-times (count fn)
   (let ((count-minus-one (- count 1))
         (roop (lambda (i)
                 (if (= i count-minus-one)
@@ -535,7 +543,7 @@
 ;;         variables of some functions accepting functions. (NOTE: dynamic scoping, while easy to implement,
 ;;         is a twisty maze of symbols all alike)
 ;;         But closures might just be doable with dynamic scoping anyhow hmm
-(defun. call-for-list (lst fn)
+#;(defun. call-for-list (lst fn)
   (cond ((end? lst)       nil)
         ((end? (cdr lst)) (fn (car lst)))
         (t                (fn (car lst))
@@ -1173,6 +1181,11 @@
   (unless (member module *features*)
     (push module *features*)))
 
+;; tests
+
+(subst-symbols '(quote <a>) '<a> 1)
+(subst-symbols '(+ <a> <b>) '<a> 1 '<b> 2)
+
 (let () 1)
 (let ((x 1)) x)
 (let ((a 1)) (+ a a))
@@ -1183,5 +1196,5 @@
 
 (fib-trec 100)
 
-(provide 'stuff)
+#;(provide 'stuff)
 

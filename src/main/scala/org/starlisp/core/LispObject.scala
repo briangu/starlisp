@@ -1,7 +1,7 @@
 package org.starlisp.core
 
-import java.util.Arrays
 import collection.mutable
+import java.util
 
 object LispObject {
   def toStringOrNil(obj: LispObject): String = Option(obj).getOrElse("nil").toString
@@ -11,7 +11,7 @@ class LispObject {
   def as[T] = this.asInstanceOf[T]
 }
 
-abstract class Procedure(val name : String = "", val minArgs: Int = 0, val maxArgs: Int = Integer.MAX_VALUE) extends LispObject {
+abstract class Procedure(val name : String, val minArgs: Int = 0, val maxArgs: Int = Integer.MAX_VALUE) extends LispObject {
   def this(name: String, numArgs: Int) = this(name, numArgs, numArgs)
 
   protected def error(msg: String): LispObject = throw new LispException(Symbol.internalError, msg)
@@ -21,7 +21,7 @@ abstract class Procedure(val name : String = "", val minArgs: Int = 0, val maxAr
   override def toString: String = "#<subr %s >".format(name)
 }
 
-abstract class LispFn(name : String = "", minArgs: Int = 0, maxArgs: Int = Integer.MAX_VALUE)
+abstract class LispFn(name : String, minArgs: Int = 0, maxArgs: Int = Integer.MAX_VALUE)
   extends Procedure(name, minArgs, maxArgs)
 {
   protected def evlisArray(list: Cell, env: Environment, length: Int, eval: ((LispObject, Environment) => LispObject)): (Array[LispObject],Int) = {
@@ -55,7 +55,7 @@ abstract class LispFn(name : String = "", minArgs: Int = 0, maxArgs: Int = Integ
   def apply(env: Environment, objects: Array[LispObject]): LispObject = apply(objects)
 }
 
-abstract class LispFn0[A <: LispObject](name : String = "") extends Procedure(name, 1, 1) {
+abstract class LispFn0[A <: LispObject](name : String) extends Procedure(name, 1, 1) {
   def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
     apply()
   }
@@ -63,7 +63,7 @@ abstract class LispFn0[A <: LispObject](name : String = "") extends Procedure(na
   def apply(): LispObject
 }
 
-abstract class LispFn1[A <: LispObject](name : String = "") extends Procedure(name, 1, 1) {
+abstract class LispFn1[A <: LispObject](name : String) extends Procedure(name, 1, 1) {
   def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
     val list = head.rest
     if (list eq null) error("Too few args when calling procedure: " + toString)
@@ -73,7 +73,7 @@ abstract class LispFn1[A <: LispObject](name : String = "") extends Procedure(na
   def apply(a: A): LispObject
 }
 
-abstract class LispFn2[A <: LispObject,B <: LispObject](name : String = "") extends Procedure(name, 2, 2) {
+abstract class LispFn2[A <: LispObject,B <: LispObject](name: String) extends Procedure(name, 2, 2) {
   def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
     val list = head.rest
     if (list eq null) error("Too few args when calling procedure: " + toString)
@@ -182,9 +182,9 @@ class LispArray(protected val ar: Array[LispObject]) extends LispObject {
 
   def length: Int = ar.length
 
-  override def hashCode: Int = Arrays.deepHashCode(ar.asInstanceOf[Array[Object]])
+  override def hashCode: Int = util.Arrays.deepHashCode(ar.asInstanceOf[Array[Object]])
   override def equals(obj: Any): Boolean = {
-    obj.isInstanceOf[LispArray] && Arrays.deepEquals(ar.asInstanceOf[Array[Object]], (obj.asInstanceOf[LispArray]).ar.asInstanceOf[Array[Object]])
+    obj.isInstanceOf[LispArray] && util.Arrays.deepEquals(ar.asInstanceOf[Array[Object]], (obj.asInstanceOf[LispArray]).ar.asInstanceOf[Array[Object]])
   }
 
   def aref(idx: Int): LispObject = ar(idx)
