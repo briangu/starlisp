@@ -50,16 +50,16 @@ class Runtime {
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
       case symbol: Symbol => {
-        env.find(symbol).map(_.value).getOrElse(error("The variable %s is unbound.".format(symbol.name)))
-      }
-      /*{
         if (symbol.value eq null) {
           val sym = env.find(symbol)
-          if (sym eq None) null else sym.get.value
+          if (sym eq None)
+            error("The variable %s is unbound.".format(symbol.name))
+          else
+           sym.get.value
         } else {
           symbol.value
         }
-      }*/
+      }
       case list: Cell => {
         eval(list.car, env) match {
           case first: Cell => {
