@@ -13,6 +13,7 @@ object REPL extends App {
         runtime.prin1(runtime.eval(runtime.read(in)), out)
       }
     } catch {
+      case e: LispException => println(e.getMessage)
       case e: Exception => e.printStackTrace;
     }
   }

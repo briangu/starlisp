@@ -1183,6 +1183,10 @@
 
 ;; tests
 
+(set 'x 1)
+(aeq 16 (progn (set 'x 8) (+ x x)))
+(aeq 8 x)
+
 (subst-symbols '(quote <a>) '<a> 1)
 (subst-symbols '(+ <a> <b>) '<a> 1 '<b> 2)
 

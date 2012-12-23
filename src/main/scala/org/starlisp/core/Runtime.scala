@@ -50,7 +50,7 @@ class Runtime {
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
     obj match {
       case symbol: Symbol => {
-        env.find(symbol).map(_.value).getOrElse(symbol)
+        env.find(symbol).map(_.value).getOrElse(error("The variable %s is unbound.".format(symbol.name)))
       }
       /*{
         if (symbol.value eq null) {
@@ -238,7 +238,15 @@ class Runtime {
     def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
       val list = head.rest
       if (list eq null) error("Too few args when calling procedure: " + toString)
-      val sym = eval(list.car, env).as[Symbol]
+      val symRef = eval(list.car, env)
+      if (!symRef.isInstanceOf[Symbol]) {
+        if (list.car.isInstanceOf[Symbol]) {
+          error("%s is not bound to a symbol.".format(list.Car[Symbol].name))
+        } else {
+          error("%s does not reference a symbol.".format(list.car.toString))
+        }
+      }
+      val sym = symRef.as[Symbol]
       if (list.rest eq null) error("Too few args when calling procedure: " + toString)
       val b = eval(list.rest.car, env)
 
