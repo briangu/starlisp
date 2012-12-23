@@ -71,7 +71,7 @@ class Runtime {
                 } else if (fn.name == Symbol.`macro`.name) {
                   evalmacro(list, first.rest, env)
                 } else {
-                  error("List is not a function: " + list.car.toString)
+                  error("%s is not a function.".format(list.car.toString))
                 }
               }
               case _ => error("unknown first: %s".format(list.car))
