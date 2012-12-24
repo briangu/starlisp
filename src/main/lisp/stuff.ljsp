@@ -354,10 +354,12 @@
 (set 'atom atom?)
 
 (defun subst-symbols (tree replacings)
-  (if (atom tree)
-      (getf replacings tree tree)
-      (cons (subst-symbols (car tree) replacings)
-            (subst-symbols (cdr tree) replacings))))
+  (if (eql? nil tree)
+    nil
+    (if (atom tree)
+        (getf replacings tree tree)
+        (cons (subst-symbols (car tree) replacings)
+              (subst-symbols (cdr tree) replacings)))))
 
 ;; Substitute matches in tree with gensyms
 (defun subst-with-gensyms (tree . symbols)
@@ -1184,7 +1186,7 @@
 (aeq 8 x)
 
 #;(subst-symbols '<a> '(<a> 1))
-#;(subst-symbols '(+ <a> <b>) '(<a> 1 <b> 2))
+#;(subst-symbols '(+ <a> <b> <c>) '(<a> 1 <b> 2))
 
 (defun foo4 (tree . replacings)
   (getf replacings tree))
@@ -1198,3 +1200,35 @@
 (let ((a 1) (b 2)) (cons a '(#\W (1231312312312312312312312312312313123 . 5343412914294967296) (<a> <b> <c>) b #(hej din fisk (1 2 3)) "potatismossa" . 12.4)))
 
 (fib-trec 100)
+
+(defun foo (tree replacings)
+  (if (atom tree)
+      (getf replacings tree tree)
+      (cons (foo (car tree) replacings)
+            (foo (cdr tree) replacings))))
+
+(defun foo2 (tree replacings)
+  (if (atom tree)
+      (getf replacings tree tree)
+      (foo (cdr tree) replacings)))
+
+(defun foo3 (tree replacings)
+  (if (eql? tree nil)
+      t
+      (progn (prin1 (length tree))
+         (prin1 (length replacings))
+         (foo3 (cdr tree) (cdr replacings)))))
+
+(defun foo4 (tree replacings)
+  (progn
+    (prin1 tree)
+    (if (atom? tree)
+        t
+        (progn (prin1 "here")
+               (prin1 tree)
+               (foo4 (car tree) (cdr replacings))
+               (prin1 tree)
+               (foo4 (cdr tree) (cdr replacings))))))
+
+#;(foo4 '(+ <a> <b> <c>) '(<a> 1 <b> 2))
+
