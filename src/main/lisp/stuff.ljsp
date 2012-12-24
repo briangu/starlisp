@@ -1,19 +1,10 @@
 ;-*- Mode: Lisp -*-
 
-(+ 1 1)
-(aeq 2 (+ 1 1))
-
-(set 'a '(+ 1 1))
-(aeq a '(+ 1 1))
-
 ;; Bootstrapping: begin!
 ;; IMPLEMENTED USING ONLY PRIMITIVES
 (set (quote defun)
      (macro (a)
        (cons (quote set) (cons (cons (quote quote) (cons (car (cdr a)) nil)) (cons (cons (quote lambda) (cdr (cdr a))) nil)))))
-
-(defun foo (x) (+ x x))
-(aeq 2 (foo 1))
 
 ;; IMPLEMENTED USING ONLY PRIMITIVES
 (set (quote defmacro)
@@ -34,10 +25,7 @@
    (open file 'in)))
 
 (defun 1- (n) (- n 1))
-(aeq 1 (1- 2))
-
 (defun 1+ (n) (+ n 1))
-(aeq 3 (1+ 2))
 
 (defun terpri rst
   (write-char #\
@@ -515,7 +503,7 @@
 (defmacro time (a)
   (list '%time (list* 'lambda '() (cdr a))))
 
-(defun. call-times (count fn)
+#;(defun. call-times (count fn)
   (let ((count-minus-one (- count 1))
         (roop (lambda (i)
                 (if (= i count-minus-one)
@@ -535,7 +523,7 @@
           result))))
     
 
-(defun call-for-list (lst fn)
+#;(defun call-for-list (lst fn)
   (cond ((end? (cdr lst)) (fn (car lst)))
         (t                (fn (car lst))
                           (call-for-list (cdr lst) fn))))
@@ -543,7 +531,7 @@
 ;;         variables of some functions accepting functions. (NOTE: dynamic scoping, while easy to implement,
 ;;         is a twisty maze of symbols all alike)
 ;;         But closures might just be doable with dynamic scoping anyhow hmm
-(defun. call-for-list (lst fn)
+#;(defun. call-for-list (lst fn)
   (cond ((end? lst)       nil)
         ((end? (cdr lst)) (fn (car lst)))
         (t                (fn (car lst))
@@ -559,7 +547,7 @@
 ;;                                         (list fn-sym (list 'car lst-sym))
 ;;                                         (list 'call-for-list (list 'cdr lst-sym) fn-sym))))))
 
-(defmacro dolist (a) (displace a
+#;(defmacro dolist (a) (displace a
   (let ((var-lst-result (cadr a)))                               
     (subst-symbols '(progn
                       (call-for-list <lst> (lambda (<var>) . <body>))
@@ -914,7 +902,7 @@
 
 (defun graph-get-adjacent-edges (graf v) (nth (+ v 1) graf))
 
-(defun depth-first-search (graf a fn)
+#;(defun depth-first-search (graf a fn)
   (unless (graph? graf)
     (error "Not graph"))
   (let ((visited (make-list (graph-num-vertices graf) nil))
@@ -1170,6 +1158,7 @@
 
     
 (setq *features* nil)
+
 (defun require (module)
   (unless (member module *features*)
     (rerequire module)))
@@ -1181,14 +1170,28 @@
   (unless (member module *features*)
     (push module *features*)))
 
+#;(provide 'stuff)
+
 ;; tests
+
+(defun foo (x) (+ x x))
+(aeq 2 (foo 1))
+(aeq 1 (1- 2))
+(aeq 3 (1+ 2))
 
 (set 'x 1)
 (aeq 16 (progn (set 'x 8) (+ x x)))
 (aeq 8 x)
 
-(subst-symbols '(quote <a>) '<a> 1)
-(subst-symbols '(+ <a> <b>) '<a> 1 '<b> 2)
+#;(subst-symbols '(<a>) '<a> 1)
+#;(subst-symbols '(quote <a>) '<a> 1)
+#;(subst-symbols '(+ <a> <b>) '<a> 1 '<b> 2)
+
+(defun foo4 (tree . replacings)
+  (if (atom? tree)
+    tree
+    (cons (cdr tree)
+          (cdr replacings))))
 
 (let () 1)
 (let ((x 1)) x)
@@ -1199,6 +1202,3 @@
 (let ((a 1) (b 2)) (cons a '(#\W (1231312312312312312312312312312313123 . 5343412914294967296) (<a> <b> <c>) b #(hej din fisk (1 2 3)) "potatismossa" . 12.4)))
 
 (fib-trec 100)
-
-(provide 'stuff)
-

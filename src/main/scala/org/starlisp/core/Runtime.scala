@@ -370,7 +370,7 @@ class Runtime {
     }
   })
   intern(new LispFnP[LispObject]("eq?") {
-    def apply(a: LispObject, b:LispObject) = { if (a eq b) t else nil }
+    def apply(a: LispObject, b:LispObject) = { if (a == b) t else nil }
   })
   intern(new LispFn1[LispObject]("atom?") {
     def apply(a: LispObject) = if (a.isInstanceOf[Cell]) nil else t

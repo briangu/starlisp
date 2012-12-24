@@ -133,5 +133,10 @@ object Symbol {
 class Symbol(var name: String = null, var value: LispObject = null) extends LispObject {
   override def toString = name.toString //if (Symbol.isInterned(this)) name else "#:%s".format(name)
   override def hashCode() = name.hashCode
-  override def equals(obj: Any) = name.equals(obj)
+  override def equals(obj: Any) = {
+    obj match {
+      case sym: Symbol => name.equals(sym.name)
+      case _ => false
+    }
+  }
 }
