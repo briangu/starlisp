@@ -505,7 +505,7 @@
 (defmacro time (a)
   (list '%time (list* 'lambda '() (cdr a))))
 
-#;(defun. call-times (count fn)
+(defun. call-times (count fn)
   (let ((count-minus-one (- count 1))
         (roop (lambda (i)
                 (if (= i count-minus-one)
@@ -525,7 +525,7 @@
           result))))
     
 
-#;(defun call-for-list (lst fn)
+(defun call-for-list (lst fn)
   (cond ((end? (cdr lst)) (fn (car lst)))
         (t                (fn (car lst))
                           (call-for-list (cdr lst) fn))))
@@ -549,7 +549,7 @@
 ;;                                         (list fn-sym (list 'car lst-sym))
 ;;                                         (list 'call-for-list (list 'cdr lst-sym) fn-sym))))))
 
-#;(defmacro dolist (a) (displace a
+(defmacro dolist (a) (displace a
   (let ((var-lst-result (cadr a)))                               
     (subst-symbols '(progn
                       (call-for-list <lst> (lambda (<var>) . <body>))
