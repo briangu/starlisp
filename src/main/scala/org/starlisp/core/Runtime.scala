@@ -11,9 +11,9 @@ class Runtime {
   val t = Symbol.t
   type Args = Array[LispObject]
 
-  var stopped = false
+  @volatile var stopped = false
 
-  private val globalEnv = RootEnvironment.chain
+  private val globalEnv: Environment = RootEnvironment.chain
 
   private def error(msg: String): LispObject = {
     throw new LispException(Symbol.internalError, msg)
@@ -56,7 +56,7 @@ class Runtime {
           if (sym eq None)
             error("The variable %s is unbound.".format(symbol.name))
           else
-           sym.get.value
+            sym.get.value
         } else {
           symbol.value
         }

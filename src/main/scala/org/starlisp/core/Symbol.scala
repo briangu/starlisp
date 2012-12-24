@@ -2,10 +2,10 @@ package org.starlisp.core
 
 import java.util.concurrent.atomic.AtomicLong
 
-trait EnvironmentH {
+trait Environment {
   def getSymbols: Cell
 
-  def chain() : Environment
+  def chain: Environment
   def depth(x: Int = 0): Int
 
   def bind(sbl: Symbol, value: LispObject)
@@ -20,10 +20,10 @@ trait EnvironmentH {
   def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
 }
 
-object RootEnvironment extends EnvironmentH {
+object RootEnvironment extends Environment {
   var index = new collection.mutable.HashMap[String, Symbol]
 
-  def chain() : Environment = new Environment(this)
+  def chain: Environment = new LexicalEnvironment(this)
   def depth(x: Int) = x + 1
 
   def gensym = Symbol.gensym
@@ -54,11 +54,11 @@ trait RouterEnvironment {
   def find(str: String): Option[Symbol]
 }
 
-class EmptyEnvironment(outer: EnvironmentH) extends RouterEnvironment {
+class EmptyEnvironment(outer: Environment) extends RouterEnvironment {
   def find(str: String) = outer.find(str)
 }
 
-class ActiveEnvironment(outer: EnvironmentH) extends RouterEnvironment {
+class ActiveEnvironment(outer: Environment) extends RouterEnvironment {
   var index = new collection.mutable.HashMap[String, Symbol]
   override def find(str: String) = {
     val x = index.get(str)
@@ -70,7 +70,7 @@ class ActiveEnvironment(outer: EnvironmentH) extends RouterEnvironment {
   }
 }
 
-class Environment(outer: EnvironmentH) extends EnvironmentH {
+class LexicalEnvironment(outer: Environment) extends Environment {
 
   var router: RouterEnvironment = new EmptyEnvironment(outer)
 
@@ -81,7 +81,7 @@ class Environment(outer: EnvironmentH) extends EnvironmentH {
     }
   }
 
-  def chain() : Environment = new Environment(this)
+  def chain: Environment = new LexicalEnvironment(this)
   def depth(x: Int = 0) = outer.depth(x + 1)
 
   def bind(sbl: Symbol, value: LispObject) {
