@@ -141,7 +141,9 @@ class LispInputStreamReader(env: Environment, in: Reader) extends LispObject wit
       if (LispNumber.isNumber(str)) {
         LispNumber.tryParse(str)
       } else {
+        new Symbol(str)
         //env.find(str).getOrElse(new Symbol(str))
+        /*
         val sym = env.find(str)
         if (sym eq None) {
           new Symbol(str)
@@ -149,6 +151,7 @@ class LispInputStreamReader(env: Environment, in: Reader) extends LispObject wit
           println("found: %s".format(str))
           sym.get
         }
+        */
       }
     }
   }

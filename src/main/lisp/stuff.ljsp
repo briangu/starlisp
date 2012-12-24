@@ -351,13 +351,13 @@
                                (car args)))))
     (eval (cons fn args))))
 
-(defun subst-symbols (tree . replacings)
-  (if (atom? tree)
-      (let* ((sym (gensym)) ; This is a leading cause of excessive gensymmage. Try storing it globally or so instead.
-             (x (getf replacings tree sym)))
-        (if (eq? x sym) tree x))
-      (cons (apply subst-symbols (car tree) replacings)
-            (apply subst-symbols (cdr tree) replacings))))
+(set 'atom atom?)
+
+(defun subst-symbols (tree replacings)
+  (if (atom tree)
+      (getf replacings tree tree)
+      (cons (subst-symbols (car tree) replacings)
+            (subst-symbols (cdr tree) replacings))))
 
 ;; Substitute matches in tree with gensyms
 (defun subst-with-gensyms (tree . symbols)
@@ -1183,15 +1183,11 @@
 (aeq 16 (progn (set 'x 8) (+ x x)))
 (aeq 8 x)
 
-#;(subst-symbols '(<a>) '<a> 1)
-#;(subst-symbols '(quote <a>) '<a> 1)
-#;(subst-symbols '(+ <a> <b>) '<a> 1 '<b> 2)
+#;(subst-symbols '<a> '(<a> 1))
+#;(subst-symbols '(+ <a> <b>) '(<a> 1 <b> 2))
 
 (defun foo4 (tree . replacings)
-  (if (atom? tree)
-    tree
-    (cons (cdr tree)
-          (cdr replacings))))
+  (getf replacings tree))
 
 (let () 1)
 (let ((x 1)) x)

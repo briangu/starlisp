@@ -6,6 +6,7 @@ trait EnvironmentH {
   def getSymbols: Cell
 
   def chain() : Environment
+  def depth(x: Int = 0): Int
 
   def bind(sbl: Symbol, value: LispObject): Unit
 
@@ -22,7 +23,8 @@ trait EnvironmentH {
 object RootEnvironment extends EnvironmentH {
   var index = new collection.mutable.HashMap[String, Symbol]
 
-  def chain() : Environment = new Environment(Some(this))
+  def chain() : Environment = new Environment(this)
+  def depth(x: Int) = x + 1
 
   def gensym = Symbol.gensym
 
@@ -52,25 +54,23 @@ trait RouterEnvironment {
   def find(str: String): Option[Symbol]
 }
 
-class EmptyEnvironment(outer: Option[EnvironmentH]) extends RouterEnvironment {
-  val env = outer.get
-  def find(str: String) = env.find(str)
+class EmptyEnvironment(outer: EnvironmentH) extends RouterEnvironment {
+  def find(str: String) = outer.find(str)
 }
 
-class ActiveEnvironment(outer: Option[EnvironmentH]) extends RouterEnvironment {
+class ActiveEnvironment(outer: EnvironmentH) extends RouterEnvironment {
   var index = new collection.mutable.HashMap[String, Symbol]
-  val env = outer.get
   override def find(str: String) = {
     val x = index.get(str)
     if (x eq None) {
-      env.find(str)
+      outer.find(str)
     } else {
       x
     }
   }
 }
 
-class Environment(outer: Option[EnvironmentH] = None) extends EnvironmentH {
+class Environment(outer: EnvironmentH) extends EnvironmentH {
 
   var router: RouterEnvironment = new EmptyEnvironment(outer)
 
@@ -81,7 +81,8 @@ class Environment(outer: Option[EnvironmentH] = None) extends EnvironmentH {
     }
   }
 
-  def chain() : Environment = new Environment(Some(this))
+  def chain() : Environment = new Environment(this)
+  def depth(x: Int = 0) = outer.depth(x + 1)
 
   def bind(sbl: Symbol, value: LispObject) {
     getWritableRouter.index.getOrElseUpdate(sbl.name, sbl).value = value

@@ -2,6 +2,7 @@ package org.starlisp.core
 
 import collection.mutable
 import java.util
+import collection.mutable.ListBuffer
 
 object LispObject {
   def toStringOrNil(obj: LispObject): String = Option(obj).getOrElse("nil").toString
@@ -28,23 +29,20 @@ abstract class LispFn(name : String, minArgs: Int = 0, maxArgs: Int = Integer.MA
     if ((list eq null) || (length == 0)) {
       (Array(), 0)
     } else {
-      val expectedLength = if (length == Integer.MAX_VALUE) list.length else length
-      val res = new Array[LispObject](expectedLength)
-      var i = 0
+      val res = new ListBuffer[LispObject]
       var c = list
       while (c != null) {
-        res(i) = eval(c.car, env)
-        i += 1
+        res.append(eval(c.car, env))
         c = c.rest
       }
-      (res, i)
+      (res.toArray, res.size)
     }
   }
 
   def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
     val list = head.rest
     val (args, foundCount) = Option(list) match {
-      case Some(argsList) => evlisArray(list.rest, env, maxArgs, eval)
+      case Some(argsList) => evlisArray(list, env, maxArgs, eval)
       case None => (Array[LispObject](), 0)
     }
     if (foundCount < minArgs) error("Too few args when calling procedure: " + toString)

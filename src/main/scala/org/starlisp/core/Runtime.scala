@@ -3,6 +3,7 @@ package org.starlisp.core
 import java.io._
 import scala.Predef._
 import scala.Some
+import java.util.Date
 
 class Runtime {
 
@@ -19,7 +20,7 @@ class Runtime {
     nil
   }
 
-  private def eq(obj1: LispObject, obj2: LispObject) = if (obj1 eq obj2) t else nil
+  private def eq(obj1: LispObject, obj2: LispObject) = if (obj1 == obj2) t else nil
   private def eql(a: LispObject, b: LispObject): LispObject = {
     if ((a eq nil) || (b eq nil))
       eq(a, b)
@@ -413,6 +414,9 @@ class Runtime {
   })
   intern(new LispFn3[LispArray, LispInteger, LispObject]("aset") {
     def apply(a: LispArray, b: LispInteger, c: LispObject) = { a.aset(b.toJavaInt, c) }
+  })
+  intern(new LispFn0("time") {
+    def apply() = new LispString(new Date().toString)
   })
   intern(new LispFn0("get-time") {
     def apply() = new LispFixnum(System.currentTimeMillis)
