@@ -185,6 +185,12 @@ class Runtime {
     ch
   }
 
+  intern(new Procedure("env-depth") {
+    def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
+      LispFixnum.create(env.depth(0))
+    }
+  })
+
   intern(new LispFn("prin1", 1, 2) {
     def apply(o: Args) = prin1(o(0), if ((o.length > 1)) o(1).as[LispOutputStream] else nil)
   })

@@ -8,7 +8,7 @@ trait EnvironmentH {
   def chain() : Environment
   def depth(x: Int = 0): Int
 
-  def bind(sbl: Symbol, value: LispObject): Unit
+  def bind(sbl: Symbol, value: LispObject)
 
   def find(symbol: Symbol): Option[Symbol]
   def find(str: String): Option[Symbol]
@@ -85,7 +85,7 @@ class Environment(outer: EnvironmentH) extends EnvironmentH {
   def depth(x: Int = 0) = outer.depth(x + 1)
 
   def bind(sbl: Symbol, value: LispObject) {
-    getWritableRouter.index.getOrElseUpdate(sbl.name, sbl).value = value
+    getWritableRouter.index.getOrElseUpdate(sbl.name, new Symbol(sbl.name, sbl.value)).value = value
   }
 
   def getSymbols: Cell = {

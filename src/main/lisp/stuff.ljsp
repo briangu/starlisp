@@ -1185,8 +1185,8 @@
 (aeq 16 (progn (set 'x 8) (+ x x)))
 (aeq 8 x)
 
-#;(subst-symbols '<a> '(<a> 1))
-#;(subst-symbols '(+ <a> <b> <c>) '(<a> 1 <b> 2))
+(aeq 1 (subst-symbols '<a> '(<a> 1)))
+(aeq '(+ 1 2) (subst-symbols '(+ <a> <b>) '(<a> 1 <b> 2)))
 
 (defun foo4 (tree . replacings)
   (getf replacings tree))
@@ -1221,14 +1221,23 @@
 
 (defun foo4 (tree replacings)
   (progn
-    (prin1 tree)
+    (prin1 (env-depth))
     (if (atom? tree)
-        t
-        (progn (prin1 "here")
+        (progn (prin1 '>>)
+               (prin1 (env-depth))
                (prin1 tree)
-               (foo4 (car tree) (cdr replacings))
+               (prin1 '<<))
+        (progn (prin1 '$)
                (prin1 tree)
+               (prin1 (env-depth))
+               (prin1 '$)
+               (prin1 (car tree))
+               (let ((q (car tree))) (foo4 q (cdr replacings)))
+               (prin1 '[)
+               (prin1 (env-depth))
+               (prin1 tree)
+               (prin1 '])
                (foo4 (cdr tree) (cdr replacings))))))
 
-#;(foo4 '(+ <a> <b> <c>) '(<a> 1 <b> 2))
+(foo4 '(+ <a> <b> <c>) '(<a> 1 <b> 2))
 
