@@ -138,21 +138,10 @@ class LispInputStreamReader(env: Environment, in: Reader) extends LispObject wit
       dottedCdr.obj = read
       dottedCdr
     } else {
-      if (LispNumber.isNumber(str)) {
+      if (LispNumber.isNumber(str))
         LispNumber.tryParse(str)
-      } else {
-        new Symbol(str)
-        //env.find(str).getOrElse(new Symbol(str))
-        /*
-        val sym = env.find(str)
-        if (sym eq None) {
-          new Symbol(str)
-        } else {
-          println("found: %s".format(str))
-          sym.get
-        }
-        */
-      }
+      else
+        RootEnvironment.find(str).getOrElse(new Symbol(str))
     }
   }
 
@@ -169,7 +158,7 @@ class LispInputStreamReader(env: Environment, in: Reader) extends LispObject wit
       if (symStr.equals("nil"))
         null
       else
-        new Symbol(symStr, new LispString(symStr))//env.find(symStr).getOrElse(new Symbol(symStr, new LispString(symStr)))
+        new Symbol(symStr, new LispString(symStr))
     } finally {
       tokenizer.useSExprSyntaxMode()
     }
