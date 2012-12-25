@@ -189,9 +189,6 @@ class Runtime {
       }
     }
   })
-  intern(new LispFn1[LispObject]("eval") {
-    def apply(a: LispObject) = eval(a, globalEnv)
-  })
   intern(new Procedure("set") {
     def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
       val list = head.rest
@@ -249,7 +246,6 @@ class Runtime {
     }
   })
   intern(new LispFn("symbols") {def apply(o: Args) = globalEnv.getSymbols})
-  intern(new LispFn("gensym") {def apply(o: Args) = Symbol.gensym})
   intern(new LispFn("make-runnable", 1) {
     def apply(o: Args) = {
       new JavaObject(new Runnable {

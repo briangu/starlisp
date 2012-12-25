@@ -164,6 +164,12 @@ object Symbol {
    *
    */
 
+  intern(new LispFn("gensym") {def apply(o: Args) = Symbol.gensym})
+  intern(new Procedure("eval") {
+    def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
+      eval(head, env)
+    }
+  })
   intern(new Procedure("env-depth") {
     def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
       LispFixnum.create(env.depth(0))
