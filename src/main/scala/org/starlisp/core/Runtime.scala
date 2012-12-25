@@ -11,7 +11,7 @@ class Runtime {
   val t = Symbol.t
   type Args = Array[LispObject]
 
-  @volatile var stopped = false
+  var stopped = false
 
   private val globalEnv: Environment = RootEnvironment.chain
 
