@@ -52,9 +52,9 @@ class Runtime {
           case first: Cell => {
             first.car match {
               case fn: Symbol => {
-                if (fn == Symbol.lambda) {
+                if (fn eq Symbol.lambda) {
                   evalLambda(list.rest, first.rest, env.chain)
-                } else if (fn == Symbol.`macro`) {
+                } else if (fn eq Symbol.`macro`) {
                   evalmacro(list, first.rest, env)
                 } else {
                   error("%s is not a function.".format(list.car.toString))
@@ -309,18 +309,6 @@ class Runtime {
   intern(new Procedure("env-depth") {
     def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
       LispFixnum.create(env.depth(0))
-    }
-  })
-
-  intern(new Procedure(Symbol.lambda.name) {
-    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
-      head
-    }
-  })
-
-  intern(new Procedure(Symbol.`macro`.name) {
-    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
-      head
     }
   })
 

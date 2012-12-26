@@ -118,15 +118,27 @@ object Symbol {
   val t: Symbol = intern("t")
   val standardOutput = intern("*standard-output*", new LispOutputStreamWriter(System.out))
   val standardError = intern("*standard-error*", new LispOutputStreamWriter(System.err))
-  val lambda = intern("lambda")
+
+  val lambda = intern(new Procedure("lambda") {
+    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      head
+    }
+  })
+
+  val `macro` = intern(new Procedure("macro") {
+    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      head
+    }
+  })
+
   val quote = intern("quote")
   val _if = intern("if")
-  val `macro` = intern("macro")
   val in = intern("in")
   val out = intern("out")
 
   Symbol.t.value = Symbol.t
 
+  private def intern(proc: Procedure): Symbol = env.intern(proc.name, proc)
   private def intern(sym: Symbol): Symbol = env.intern(sym)
   private def intern(str: String): Symbol = intern(new Symbol(str))
   private def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
