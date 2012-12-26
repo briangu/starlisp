@@ -52,9 +52,9 @@ class Runtime {
           case first: Cell => {
             first.car match {
               case fn: Symbol => {
-                if (fn.name == Symbol.lambda.name) {
+                if (fn == Symbol.lambda) {
                   evalLambda(list.rest, first.rest, env.chain)
-                } else if (fn.name == Symbol.`macro`.name) {
+                } else if (fn == Symbol.`macro`) {
                   evalmacro(list, first.rest, env)
                 } else {
                   error("%s is not a function.".format(list.car.toString))

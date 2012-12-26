@@ -112,7 +112,7 @@ object Symbol {
 
   private val genSymCounter = new AtomicLong()
 
-  def gensym = new Symbol("G%d".format(genSymCounter.getAndIncrement()))
+  def gensym = new Symbol("G%d".format(genSymCounter.getAndIncrement))
 
   val internalError = intern("internal-error")
   val t: Symbol = intern("t")
