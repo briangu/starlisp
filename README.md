@@ -15,8 +15,20 @@ Starlisp is currently interpreted, though plans for enabling compiling to jasmin
 
 Starlisp supports:
 
-lexical scoping.
-java interop using the dot syntax (.toString obj)
+* lexical scoping.
+* java interop using the dot syntax (.toString obj)
+
+Planned
+=======
+
+* Embedded web server to enable online debugging and REPL
+* Interfacing with Finagle for good async execution
+* backquotes
+
+TODO
+====
+
+* [fix] java interop using the dot syntax (.toString obj)
 
 building
 ========
@@ -25,16 +37,16 @@ compile:
 
     $ mvn clean install
 
-bootstrap:
+run the REPL:
 
-    $ cat src/main/lisp/bootstrap.ljsp - | java -jar target/org.starlisp.core-0.0.1-jar-with-dependencies.jar 
+    $ java -jar target/org.starlisp.core-0.0.1-jar-with-dependencies.jar
 
 examples
 ========
 
 bootstrap:
 
-    $ cat src/main/lisp/bootstrap.ljsp - | java -jar target/org.starlisp.core-0.0.1-jar-with-dependencies.jar 
+    $ java -jar target/org.starlisp.core-0.0.1-jar-with-dependencies.jar
 
 try:
 

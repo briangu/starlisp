@@ -58,6 +58,8 @@ class LispOutputStreamWriter extends LispObject with LispOutputStream {
   override def toString: String = "#<" + super.toString + ">"
 }
 
+class StringInputStream(env: Environment, string: String) extends LispInputStreamReader(env, new StringReader(string)) {}
+
 class StringOutputStream(writer: StringWriter = new StringWriter) extends LispOutputStreamWriter(new PrintWriter(writer)) {
   def getOutputStreamString: String = {
     val sb = writer.getBuffer

@@ -3,7 +3,7 @@ package org.starlisp
 import core._
 
 object REPL extends App {
-  val runtime = new Runtime
+  val runtime = Runtime.createAndBootstrap
   while(!runtime.stopped) {
     try {
       val out = Symbol.standardOutput.value.asInstanceOf[LispOutputStream]

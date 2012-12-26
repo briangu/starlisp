@@ -5,6 +5,21 @@ import scala.Predef._
 import scala.Some
 import java.util.Date
 
+object Runtime {
+  def createAndBootstrap: Runtime = {
+    val runtime = new Runtime
+    val bootstrap = FileUtils.readResourceFile(this.getClass, "/bootstrap.ljsp")
+    val is = new StringInputStream(runtime.globalEnv, bootstrap)
+    try {
+      runtime.eval(runtime.read(is))
+      Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("Hello and welcome to starlisp!\n")
+    } finally {
+      is.close
+    }
+    runtime
+  }
+}
+
 class Runtime {
 
   val nil = null
