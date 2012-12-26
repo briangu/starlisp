@@ -11,7 +11,7 @@ public final class JavaObject extends LispFn {
   private final static Map<Class, Map<Symbol, Monstructor[]>> methodMap = new HashMap<Class, Map<Symbol, Monstructor[]>>();
   private final Class klas;
   private final Object obj;
-  private final static Symbol newInstance = Symbol$.MODULE$.intern("newInstance");
+  private final static Symbol newInstance = RootEnvironment.intern("newInstance");
 
   /* Wrap that object! */
   public JavaObject(Object obj) {

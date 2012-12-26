@@ -382,8 +382,9 @@ class Runtime {
   })
   intern(new LispFn1[LispObject]("intern") {
     def apply(a: LispObject) = {
+      // TODO: intern into which env?
       if (a.isInstanceOf[LispString]) intern((a.as[LispString]).toJavaString)
-      else if (a.isInstanceOf[Symbol]) Symbol.intern(a.as[Symbol])
+      else if (a.isInstanceOf[Symbol]) globalEnv.intern(a.as[Symbol])
       else throw new LispException(Symbol.internalError, "Bad argument")
     }
   })

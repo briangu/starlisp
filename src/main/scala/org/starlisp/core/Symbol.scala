@@ -127,9 +127,9 @@ object Symbol {
 
   Symbol.t.value = Symbol.t
 
-  def intern(sym: Symbol): Symbol = env.intern(sym)
-  def intern(str: String): Symbol = intern(new Symbol(str))
-  def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
+  private def intern(sym: Symbol): Symbol = env.intern(sym)
+  private def intern(str: String): Symbol = intern(new Symbol(str))
+  private def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
 }
 
 class Symbol(var name: String = null, var value: LispObject = null) extends LispObject {
