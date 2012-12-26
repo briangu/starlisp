@@ -3,6 +3,16 @@ package org.starlisp
 import core._
 
 object MicroBenchmark {
+  def warmupInt() {
+    var q = 0
+    val start = System.nanoTime()
+    (0 until 100000000).foreach{ idx =>
+      q = 1 + 1
+    }
+    val now = System.nanoTime()
+    println("\n\t time = %d for %d".format(now - start, q))
+  }
+
   def warmup(runtime: Runtime) {
     Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("\n>>");
     val list = runtime.read(runtime.standardInput.value.asInstanceOf[LispInputStream])
@@ -41,6 +51,10 @@ object MicroBenchmark {
   }
 
   def main(args: Array[String]) {
+    warmupInt
+    warmupInt
+    warmupInt
+
     var runtime = new Runtime
 
     warmup(runtime)
@@ -51,9 +65,9 @@ object MicroBenchmark {
     warmup(runtime)
 
     println("doing real job")
-
     var start : Long = 0
     var now: Long = 0
+
     while(!runtime.stopped) {
       try {
         while(!runtime.stopped) {

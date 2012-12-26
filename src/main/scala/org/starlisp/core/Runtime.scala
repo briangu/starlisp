@@ -50,17 +50,13 @@ class Runtime {
       case list: Cell => {
         eval(list.car, env) match {
           case first: Cell => {
-            first.car match {
-              case fn: Symbol => {
-                if (fn eq Symbol.lambda) {
-                  evalLambda(list.rest, first.rest, env.chain)
-                } else if (fn eq Symbol.`macro`) {
-                  evalmacro(list, first.rest, env)
-                } else {
-                  error("%s is not a function.".format(list.car.toString))
-                }
-              }
-              case _ => error("unknown first: %s".format(list.car))
+            val fn = first.car
+            if (fn eq Symbol.lambda) {
+              evalLambda(list.rest, first.rest, env.chain)
+            } else if (fn eq Symbol.`macro`) {
+              evalmacro(list, first.rest, env)
+            } else {
+              error("%s is not a function.".format(list.car.toString))
             }
           }
           case proc: Procedure => proc(env, list, eval)
