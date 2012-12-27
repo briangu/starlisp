@@ -9,7 +9,7 @@ object Runtime {
   def createAndBootstrap: Runtime = {
     val runtime = new Runtime
     val bootstrap = FileUtils.readResourceFile(this.getClass, "/bootstrap.ljsp")
-    val is = new StringInputStream(runtime.rootChild, bootstrap)
+    val is = new StringInputStream(runtime.systemEnv, bootstrap)
     try {
       while(!runtime.stopped) {
         try {
@@ -36,8 +36,8 @@ class Runtime {
 
   var stopped = false
 
-  private val rootChild: Environment = RootEnvironment.chain
-  private val globalEnv: Environment = rootChild.chain
+  private val systemEnv: Environment = RootEnvironment.chain
+  private val globalEnv: Environment = systemEnv.chain
 
   private def error(msg: String): LispObject = {
     throw new LispException(Symbol.internalError, msg)
@@ -146,7 +146,7 @@ class Runtime {
   def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
   def intern(sym: Symbol): Symbol = globalEnv.intern(sym)
 
-  val standardInput = globalEnv.intern("*standard-input*", new LispInputStreamReader(rootChild, System.in))
+  val standardInput = globalEnv.intern("*standard-input*", new LispInputStreamReader(systemEnv, System.in))
 
   def read(stream: LispInputStream): LispObject = {
     Option(stream).getOrElse(standardInput.value).as[LispInputStream].read
