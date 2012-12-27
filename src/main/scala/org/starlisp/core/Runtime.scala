@@ -11,9 +11,17 @@ object Runtime {
     val bootstrap = FileUtils.readResourceFile(this.getClass, "/bootstrap.ljsp")
     val is = new StringInputStream(runtime.rootChild, bootstrap)
     try {
-      runtime.eval(runtime.read(is))
+      while(!runtime.stopped) {
+        try {
+          val expr = runtime.read(is)
+          runtime.eval(expr)
+        } catch {
+          case e: LispException => println(e.getMessage)
+        }
+      }
       Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("Hello and welcome to starlisp!\n")
     } finally {
+      runtime.stopped = false
       is.close
     }
     runtime
@@ -445,7 +453,7 @@ class Runtime {
   intern(new LispFn1[LispStream]("eof?") {
     def apply(a: LispStream) = if (a.eof) t else nil
   })
-  intern(new LispFn("exit", 0, 1) {
+  intern(new LispFn("system-exit", 0, 1) {
     def apply(o: Args) = {
       System.exit(if (o.length < 1) 0 else (o(0).as[LispNumber]).toJavaInt)
       nil
