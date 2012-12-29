@@ -115,7 +115,7 @@ class Cell(var car: LispObject = null, var cdr: LispObject = null) extends LispO
   def cdddr = rest.rest.rest
 
   def Cdr[T <: LispObject](): T = this.cdr.asInstanceOf[T]
-  def Cdr(cdr: LispObject) : LispObject = { this.cdr = cdr; cdr }
+  def Cdr[T <: LispObject](cdr: T) : T = { this.cdr = cdr; cdr }
 
   private final def hashCode(obj: LispObject): Int = {
     if ((obj == null)) 261835505 else if ((obj.isInstanceOf[Cell])) 1 + obj.hashCode else obj.hashCode

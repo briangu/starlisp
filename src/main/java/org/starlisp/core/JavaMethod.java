@@ -209,11 +209,7 @@ public final class JavaMethod extends LispFn {
         methodMap.get(name()).put(argumentTypes, method);
       }
       return javaToLisp(method.invoke(obj, lispToJava(objects, method.getParameterTypes()))); // Wee...
-    } catch (IllegalAccessException e) {
-      throw new LispException(Symbol.internalError(), e);
-    } catch (InvocationTargetException e) {
-      throw new LispException(Symbol.internalError(), e);
-    } catch (InstantiationException e) {
+    } catch (IllegalAccessException | InvocationTargetException | InstantiationException e) {
       throw new LispException(Symbol.internalError(), e);
     }
   }

@@ -9,9 +9,9 @@ import java.util.Map;
 
 public final class JavaObject extends LispFn {
   private final static Map<Class, Map<Symbol, Monstructor[]>> methodMap = new HashMap<Class, Map<Symbol, Monstructor[]>>();
+  private final static Symbol newInstance = RootEnvironment.intern("newInstance");
   private final Class klas;
   private final Object obj;
-  private final static Symbol newInstance = RootEnvironment.intern("newInstance");
 
   /* Wrap that object! */
   public JavaObject(Object obj) {
@@ -20,8 +20,9 @@ public final class JavaObject extends LispFn {
     // klas = (obj != null) ? obj.getClass() : null;
     klas = obj.getClass();
     Class storeKlas = (klas == Class.class) ? (Class) obj : klas; // We need to use obj as key when it is an instance of Class
-    if (!methodMap.containsKey(storeKlas))
+    if (!methodMap.containsKey(storeKlas)) {
       methodMap.put(storeKlas, new HashMap<Symbol, Monstructor[]>());
+    }
   }
 
   /* Apply object to symbol generating a "closure", a.k.a. method. */
@@ -30,32 +31,42 @@ public final class JavaObject extends LispFn {
     ArrayList<Monstructor> methodList = new ArrayList<Monstructor>();
     Monstructor[] methodArray;
     Class storeKlas = (klas == Class.class) ? (Class) obj : klas; // We need to use obj as key when it is an instance of Class
-    if ((methodArray = methodMap.get(storeKlas).get(sbl)) != null)
+    if ((methodArray = methodMap.get(storeKlas).get(sbl)) != null) {
       return new JavaMethod(methodArray, sbl.name(), obj);
+    }
     if (obj != Class.class && obj instanceof Class) {
       // Special case when obj is a Class object (but not a Class object representing a Class object. That is: not Class.class):
       // Allow, in addition to accessing the methods of the object, access to static methods, and the constructors of the
       // class this object represents. If you are confused now blame Javas reflection API.
       for (Method m : ((Class) obj).getMethods())       // Find static methods
-        if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(sbl.name()))
+        if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(sbl.name())) {
           methodList.add(new Monstructor(m));
+        }
       if (sbl == newInstance)                         // Yay, constructors! (Note: we do not try to fetch any more methods in  this case)
+      {
         for (Constructor c : ((Class) obj).getConstructors())
           methodList.add(new Monstructor(c));
-      else
+      } else {
         for (Method m : klas.getMethods())
           // for (Method m: klas.getDeclaredMethods())
           if (m.getName().equals(sbl.name()))
-            // if (m.getName().equals(sbl.name()) && !Modifier.isAbstract(m.getReturnType().getModifiers())) // say no to methods returning abstract types
+          // if (m.getName().equals(sbl.name()) && !Modifier.isAbstract(m.getReturnType().getModifiers())) // say no to methods returning abstract types
+          {
             methodList.add(new Monstructor(m));
-    } else
+          }
+      }
+    } else {
       for (Method m : klas.getMethods())
         // for (Method m: klas.getDeclaredMethods())
         if (m.getName().equals(sbl.name()))
-          // if (m.getName().equals(sbl.name()) && !Modifier.isAbstract(m.getReturnType().getModifiers())) // say no to methods returning abstract types
+        // if (m.getName().equals(sbl.name()) && !Modifier.isAbstract(m.getReturnType().getModifiers())) // say no to methods returning abstract types
+        {
           methodList.add(new Monstructor(m));
-    if (methodList.isEmpty())
+        }
+    }
+    if (methodList.isEmpty()) {
       throw new LispException(Symbol$.MODULE$.internalError(), "No such method: " + sbl.name() + ", " + toString());
+    }
     methodArray = methodList.toArray(new Monstructor[0]);    // Umm... Not pretty API here Java...
     methodMap.get(storeKlas).put(sbl, methodArray);          // Cache the results
     return new JavaMethod(methodArray, sbl.name(), obj);
@@ -70,8 +81,8 @@ public final class JavaObject extends LispFn {
   }
 
   public boolean equals(Object obj) {
-    return (obj instanceof JavaObject) ? ((JavaObject) obj).obj.equals(this.obj) : false;
-  } // FIXME: change me?
+    return (obj instanceof JavaObject) && ((JavaObject) obj).obj.equals(this.obj);
+  }
 
   public int hashCode() {
     return obj.hashCode();

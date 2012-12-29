@@ -5,6 +5,8 @@ import scala.Predef._
 import scala.Some
 import java.util.Date
 
+// TODO: in order to make runtime construction cheaper, we should move non-runtime specific interns
+//       to a System type object initializer so runtime construction
 object Runtime {
   def createAndBootstrap: Runtime = {
     val runtime = new Runtime
@@ -30,17 +32,19 @@ object Runtime {
 
 class Runtime {
 
+  import Symbol._
+
   val nil = null
-  val t = Symbol.t
   type Args = Array[LispObject]
 
   var stopped = false
 
-  private val systemEnv: Environment = RootEnvironment.chain
-  private val globalEnv: Environment = systemEnv.chain
+  private val systemEnv = RootEnvironment.chain
+  private val runtimeEnv = systemEnv.chain
+  private val globalEnv = runtimeEnv.chain
 
   private def error(msg: String): LispObject = {
-    throw new LispException(Symbol.internalError, msg)
+    throw new LispException(internalError, msg)
     nil
   }
 
@@ -52,7 +56,7 @@ class Runtime {
     val result = last
     var c = list.rest
     while (c != null) {
-      last = (last.Cdr(new Cell(eval(c.car, env)))).as[Cell]
+      last = last.Cdr(new Cell(eval(c.car, env)))
       c = c.rest
     }
     result
@@ -75,9 +79,9 @@ class Runtime {
         eval(list.car, env) match {
           case first: Cell => {
             val fn = first.car
-            if (fn eq Symbol.lambda) {
+            if (fn eq lambda) {
               evalLambda(list.rest, first.rest, env.chain)
-            } else if (fn eq Symbol.`macro`) {
+            } else if (fn eq `macro`) {
               evalmacro(list, first.rest, env)
             } else {
               error("%s is not a function.".format(list.car.toString))
@@ -96,7 +100,7 @@ class Runtime {
   }
 
   private def evalmacro(list: Cell, second: Cell, env: Environment): LispObject = {
-    eval(eval(cons(cons(Symbol.lambda, second), cons(cons(Symbol.quote, cons(list)))), env), env)
+    eval(eval(cons(cons(lambda, second), cons(cons(quote, cons(list)))), env), env)
   }
 
   private def pairlis(cell: Cell, argsList: Cell, env: Environment) {
@@ -140,13 +144,13 @@ class Runtime {
 
   // Initialize the Runtime-specific methods
   private def intern(proc: Procedure) {
-    globalEnv.intern(proc.name).value = proc
+    runtimeEnv.intern(proc.name).value = proc
   }
   def intern(str: String): Symbol = intern(new Symbol(str))
   def intern(str: String, value: LispObject) : Symbol = intern(new Symbol(str, value))
-  def intern(sym: Symbol): Symbol = globalEnv.intern(sym)
+  def intern(sym: Symbol): Symbol = runtimeEnv.intern(sym)
 
-  val standardInput = globalEnv.intern("*standard-input*", new LispInputStreamReader(systemEnv, System.in))
+  val standardInput = runtimeEnv.intern("*standard-input*", new LispInputStreamReader(runtimeEnv, System.in))
 
   def read(stream: LispInputStream): LispObject = {
     Option(stream).getOrElse(standardInput.value).as[LispInputStream].read
@@ -157,12 +161,12 @@ class Runtime {
   }
 
   def prin1(obj: LispObject, stream: LispOutputStream): LispObject = {
-    val s = if (stream != nil) stream else Symbol.standardOutput.value.as[LispOutputStream]
+    val s = if (stream != nil) stream else standardOutput.value.as[LispOutputStream]
     if (obj != nil) {s.write(obj.toString)} else {s.write("nil")}
     obj
   }
   def writeChar(ch: LispChar, stream: LispOutputStream): LispChar = {
-    (if (stream != nil) stream else Symbol.standardOutput.value).as[LispOutputStream].write(ch.ch)
+    (if (stream != nil) stream else standardOutput.value).as[LispOutputStream].write(ch.ch)
     ch
   }
 
@@ -175,7 +179,7 @@ class Runtime {
         writeChar(o(0).as[LispChar], (if (o.length > 1) o(1).as[LispOutputStream] else nil))
       } catch {
         case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
+          throw new LispException(internalError, "An IOException just occured to me, " + this.toString)
         }
       }
     }
@@ -186,7 +190,7 @@ class Runtime {
         if (a.close) t else nil
       } catch {
         case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
+          throw new LispException(internalError, "An IOException just ocurred to me, " + this.toString)
         }
       }
     }
@@ -197,7 +201,7 @@ class Runtime {
         read(if (o.length > 0) o(0).as[LispInputStream] else nil)
       } catch {
         case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just ocurred to me, " + this.toString)
+          throw new LispException(internalError, "An IOException just ocurred to me, " + this.toString)
         }
       }
     }
@@ -208,7 +212,7 @@ class Runtime {
         readChar(if (o.length > 0) o(0).as[LispInputStream] else nil)
       } catch {
         case e: IOException => {
-          throw new LispException(Symbol.internalError, "An IOException just occured to me, " + this.toString)
+          throw new LispException(internalError, "An IOException just occured to me, " + this.toString)
         }
       }
     }
@@ -236,7 +240,7 @@ class Runtime {
         }
         case None => {
           sym.value = b
-          globalEnv.intern(sym) // TODO: hack! we are setting the globalEnv on miss so setq works
+          globalEnv.intern(sym) // CMUCL style auto-promote to special
         }
       }
       b
@@ -251,12 +255,12 @@ class Runtime {
         if (list.rest eq null) error("Too few args when calling procedure: " + toString)
         val b = eval(list.rest.car, env)
 
-        if (b eq Symbol.in) new LispInputStreamReader(env, new FileReader(a))
-        else if (b eq Symbol.out) new LispOutputStreamWriter(new PrintWriter(new FileWriter(a)))
-        else throw new LispException(Symbol.internalError, "You confused me, you want a stream out, or in?")
+        if (b eq in) new LispInputStreamReader(env, new FileReader(a))
+        else if (b eq out) new LispOutputStreamWriter(new PrintWriter(new FileWriter(a)))
+        else throw new LispException(internalError, "You confused me, you want a stream out, or in?")
       } catch {
         case e: IOException => {
-          throw new LispException(Symbol.internalError, e)
+          throw new LispException(internalError, e)
         }
       }
     }
@@ -320,7 +324,7 @@ class Runtime {
    *
    */
 
-  intern(new LispFn("gensym") {def apply(o: Args) = Symbol.gensym})
+  intern(new LispFn("gensym") {def apply(o: Args) = gensym})
   intern(new Procedure("eval") {
     def apply(env: Environment, head: Cell, eval: (LispObject, Environment) => LispObject) = {
       eval(head, env)
@@ -332,18 +336,6 @@ class Runtime {
     }
   })
 
-  intern(new Procedure(Symbol._if.name) {
-    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
-      val list = head.rest
-      Option(eval(list.car, env)) match {
-        case Some(_) => eval(list.cadr, env)
-        case None => Option(list.cddr) match {
-          case Some(cell) => eval(cell.car, env)
-          case None => null
-        }
-      }
-    }
-  })
   intern("nil", nil)
   intern("Class", new JavaObject(classOf[java.lang.Class[_]]))
 
@@ -361,12 +353,6 @@ class Runtime {
       }
       if (!areEqual) error("%s not equal %s".format(evalA,evalB))
       t
-    }
-  })
-
-  intern(new Procedure(Symbol.quote.name) {
-    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
-      list.cadr
     }
   })
 
@@ -393,7 +379,7 @@ class Runtime {
       // TODO: intern into which env?
       if (a.isInstanceOf[LispString]) intern((a.as[LispString]).toJavaString)
       else if (a.isInstanceOf[Symbol]) globalEnv.intern(a.as[Symbol])
-      else throw new LispException(Symbol.internalError, "Bad argument")
+      else throw new LispException(internalError, "Bad argument")
     }
   })
   intern(new LispFnP[LispObject]("eq?") {
@@ -467,7 +453,7 @@ class Runtime {
       if (o.length == 2) {
         if (o(1).isInstanceOf[LispString]) throw new LispException(o(0).as[Symbol], (o(1).as[LispString]).toJavaString)
         else if (o(1).isInstanceOf[JavaObject]) throw new LispException(o(0).as[Symbol], (o(1).as[JavaObject]).getObj.asInstanceOf[Throwable])
-        else throw new LispException(Symbol.internalError, "Throw threw a throw.")
+        else throw new LispException(internalError, "Throw threw a throw.")
       }
       if (o(0).isInstanceOf[JavaObject] && (o(0).as[JavaObject]).getObj.isInstanceOf[LispException]) throw (o(0).as[JavaObject]).getObj.asInstanceOf[LispException]
       throw new LispException(o(0).as[Symbol])
@@ -477,7 +463,7 @@ class Runtime {
     def apply(o: Args) = {
       if (o(0).isInstanceOf[Cell]) new LispArray(o(0).as[Cell])
       else if (o(0).isInstanceOf[LispInteger]) new LispArray((o(0).as[LispInteger]).toJavaInt)
-      else throw new LispException(Symbol.internalError, "make-array wants an integer or a list")
+      else throw new LispException(internalError, "make-array wants an integer or a list")
     }
   })
   intern(new LispFn("make-string", 2) {

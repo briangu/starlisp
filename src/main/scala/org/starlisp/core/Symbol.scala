@@ -50,40 +50,38 @@ object RootEnvironment extends Environment {
   def intern(symbol: Symbol): Symbol = index.getOrElseUpdate(symbol.name, symbol)
 }
 
-trait RouterEnvironment {
-  def find(symbol: Symbol): Option[Symbol] = find(symbol.name)
-  def find(str: String): Option[Symbol]
-}
+class LexicalEnvironment(var proxy: Environment) extends Environment {
 
-class EmptyEnvironment(outer: Environment) extends RouterEnvironment {
-  def find(str: String) = outer.find(str)
-}
+  class ActiveEnvironment(outer: Environment) extends Environment {
+    var index = new collection.mutable.HashMap[String, Symbol]
 
-class ActiveEnvironment(outer: Environment) extends RouterEnvironment {
-  var index = new collection.mutable.HashMap[String, Symbol]
-  override def find(str: String) = {
-    val x = index.get(str)
-    if (x eq None) {
-      outer.find(str)
-    } else {
-      x
+    override def find(str: String) = {
+      val x = index.get(str)
+      if (x eq None) {
+        outer.find(str)
+      } else {
+        x
+      }
     }
+
+    def getSymbols = throw new UnsupportedOperationException
+    def chain = throw new UnsupportedOperationException
+    def depth(x: Int) = outer.depth(x + 1)
+    def bind(sbl: Symbol, value: LispObject) { throw new UnsupportedOperationException }
+    def find(symbol: Symbol) = throw new UnsupportedOperationException
+    def intern(symbol: Symbol) = throw new UnsupportedOperationException
   }
-}
-
-class LexicalEnvironment(outer: Environment) extends Environment {
-
-  var router: RouterEnvironment = new EmptyEnvironment(outer)
 
   private def getWritableRouter: ActiveEnvironment = {
-    router match {
-      case r: EmptyEnvironment => { val e = new ActiveEnvironment(outer); router = e; e }
-      case r: ActiveEnvironment => r
+    if (!proxy.isInstanceOf[ActiveEnvironment]) {
+      proxy = new ActiveEnvironment(proxy)
     }
+    proxy.asInstanceOf[ActiveEnvironment]
   }
 
+  // TODO: preallocate environments in an array for cache locality?
   def chain: Environment = new LexicalEnvironment(this)
-  def depth(x: Int = 0) = outer.depth(x + 1)
+  def depth(x: Int = 0) = proxy.depth(x + 1)
 
   def bind(sbl: Symbol, value: LispObject) {
     getWritableRouter.index.getOrElseUpdate(sbl.name, new Symbol(sbl.name, sbl.value)).value = value
@@ -100,8 +98,8 @@ class LexicalEnvironment(outer: Environment) extends Environment {
     null
   }
 
-  def find(symbol: Symbol): Option[Symbol] = router.find(symbol.name)
-  def find(str: String): Option[Symbol] = router.find(str)
+  def find(symbol: Symbol): Option[Symbol] = proxy.find(symbol.name)
+  def find(str: String): Option[Symbol] = proxy.find(str)
 
   def intern(symbol: Symbol): Symbol = getWritableRouter.index.getOrElseUpdate(symbol.name, symbol)
 }
@@ -131,8 +129,25 @@ object Symbol {
     }
   })
 
-  val quote = intern("quote")
-  val _if = intern("if")
+  val quote = intern(new Procedure("quote") {
+    def apply(env: Environment, list: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      list.cadr
+    }
+  })
+
+  val _if = intern(new Procedure("if") {
+    def apply(env: Environment, head: Cell, eval: ((LispObject, Environment) => LispObject)): LispObject = {
+      val list = head.rest
+      Option(eval(list.car, env)) match {
+        case Some(_) => eval(list.cadr, env)
+        case None => Option(list.cddr) match {
+          case Some(cell) => eval(cell.car, env)
+          case None => null
+        }
+      }
+    }
+  })
+
   val in = intern("in")
   val out = intern("out")
 
