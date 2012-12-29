@@ -3,7 +3,7 @@ package org.starlisp.core
 import java.util.concurrent.atomic.AtomicLong
 
 trait Environment {
-  def getSymbols: Cell
+  def getSymbols: Map[String, Symbol]
 
   def chain: Environment
   def depth(x: Int = 0): Int
@@ -33,21 +33,31 @@ object RootEnvironment extends Environment {
     index.getOrElseUpdate(sbl.name, sbl).value = value
   }
 
-  def getSymbols: Cell = {
-    /*
-    var symbols: Cell = null
-    index.foreach{ case (name, sym) =>
-      symbols = new Cell(sym, symbols)
-    }
-    symbols
-    */
-    null
-  }
+  def getSymbols: Map[String, Symbol] = index.toMap
 
   def find(symbol: Symbol): Option[Symbol] = find(symbol.name)
   def find(str: String): Option[Symbol] = index.get(str)
 
   def intern(symbol: Symbol): Symbol = index.getOrElseUpdate(symbol.name, symbol)
+}
+
+class FinalizedEnvironment(symbols: Map[String, Symbol]) extends Environment {
+
+  def getSymbols = symbols
+
+  def chain = new LexicalEnvironment(this)
+
+  def depth(x: Int) = x + 1
+
+  def bind(sbl: Symbol, value: LispObject) {
+    throw new UnsupportedOperationException
+  }
+
+  def find(symbol: Symbol) = symbols.get(symbol.name)
+
+  def find(str: String) = symbols.get(str)
+
+  def intern(symbol: Symbol) = throw new UnsupportedOperationException
 }
 
 class LexicalEnvironment(var proxy: Environment) extends Environment {
@@ -64,7 +74,7 @@ class LexicalEnvironment(var proxy: Environment) extends Environment {
       }
     }
 
-    def getSymbols = throw new UnsupportedOperationException
+    def getSymbols = outer.getSymbols ++ index.toMap // override deeper symbols
     def chain = throw new UnsupportedOperationException
     def depth(x: Int) = outer.depth(x + 1)
     def bind(sbl: Symbol, value: LispObject) { throw new UnsupportedOperationException }
@@ -87,16 +97,7 @@ class LexicalEnvironment(var proxy: Environment) extends Environment {
     getWritableRouter.index.getOrElseUpdate(sbl.name, new Symbol(sbl.name, sbl.value)).value = value
   }
 
-  def getSymbols: Cell = {
-    /*
-    var symbols: Cell = null
-    index.foreach{ case (name, sym) =>
-      symbols = new Cell(sym, symbols)
-    }
-    symbols
-    */
-    null
-  }
+  def getSymbols = proxy.getSymbols
 
   def find(symbol: Symbol): Option[Symbol] = proxy.find(symbol.name)
   def find(str: String): Option[Symbol] = proxy.find(str)
