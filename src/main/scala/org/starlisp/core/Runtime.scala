@@ -21,7 +21,6 @@ object Runtime {
           case e: LispException => println(e.getMessage)
         }
       }
-      Symbol.standardOutput.value.asInstanceOf[LispOutputStream].write("Hello and welcome to starlisp!\n")
     } finally {
       runtime.stopped = false
       is.close
@@ -273,7 +272,12 @@ class Runtime {
       new LispInputStreamReader(env, new StringReader(a))
     }
   })
-  intern(new LispFn("symbols") {def apply(o: Args) = globalEnv.getSymbols})
+  intern(new LispFn("symbols") {
+    def apply(o: Args) = {
+      globalEnv.getSymbols
+      nil // TODO: fixme
+    }
+  })
   intern(new LispFn("make-runnable", 1) {
     def apply(o: Args) = {
       new JavaObject(new Runnable {
