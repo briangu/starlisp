@@ -1172,6 +1172,15 @@
   (unless (member module *features*)
     (push module *features*)))
 
+(defun send (obj msg . args) (apply (obj msg) args))
+
+(defun fetch-java-classes clazzes
+  (let ((roop (lambda (lst)
+                (unless (end? lst)
+                  (set (car lst) (send Class 'forName (cadr lst)))
+                  (roop (cddr lst))))))
+    (roop clazzes)))
+
 #;(provide 'system)
 
 (exit)

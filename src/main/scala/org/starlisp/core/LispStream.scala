@@ -67,6 +67,9 @@ class StringOutputStream(writer: StringWriter = new StringWriter) extends LispOu
     sb.setLength(0)
     result
   }
+  override def toString: String = {
+    getOutputStreamString
+  }
 }
 
 class LispInputStreamReader(env: Environment, in: Reader) extends LispObject with LispInputStream {

@@ -18,7 +18,7 @@ object Runtime {
           val expr = runtime.read(is)
           runtime.eval(expr)
         } catch {
-          case e: LispException => println(e.getMessage)
+          case e: LispException => ;//println(e.getMessage)
         }
       }
     } finally {
@@ -59,6 +59,10 @@ class Runtime {
       c = c.rest
     }
     result
+  }
+
+  def inputStreamFromString(string: String): LispInputStream = {
+    new StringInputStream(globalEnv, string)
   }
 
   def eval(obj: LispObject, env: Environment = globalEnv): LispObject = {
