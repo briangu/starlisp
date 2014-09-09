@@ -29,7 +29,7 @@ object Runtime {
   }
 }
 
-class Runtime {
+class Runtime(val systemEnv: Environment = RootEnvironment.chain) {
 
   import Symbol._
 
@@ -38,9 +38,8 @@ class Runtime {
 
   var stopped = false
 
-  private val systemEnv = RootEnvironment.chain
-  private val runtimeEnv = systemEnv.chain
-  private val globalEnv = runtimeEnv.chain
+  val runtimeEnv = systemEnv.chain
+  val globalEnv = runtimeEnv.chain
 
   private def error(msg: String): LispObject = {
     throw new LispException(internalError, msg)
