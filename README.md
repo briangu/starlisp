@@ -15,6 +15,7 @@ Starlisp is currently interpreted, though plans for enabling compiling to jasmin
 
 Starlisp supports:
 
+* Server-friendly runtime contexts (environments)
 * lexical scoping.
 * java interop using the dot syntax (.toString obj)
 
